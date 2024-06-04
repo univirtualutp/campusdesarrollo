@@ -41,9 +41,9 @@ $CFG = new stdClass();
 $CFG->dbtype    = 'pgsql';      // 'pgsql', 'mariadb', 'mysqli', 'auroramysql', 'sqlsrv' or 'oci'
 $CFG->dblibrary = 'native';     // 'native' only at the moment
 $CFG->dbhost    = 'localhost';  // eg 'localhost' or 'db.isp.com' or IP
-$CFG->dbname    = 'desarrollo';     // database name, eg moodle
-$CFG->dbuser    = 'desarrollo';   // your database username
-$CFG->dbpass    = 'd3s4rr0ll0';   // your database password
+$CFG->dbname    = 'moodle';     // database name, eg moodle
+$CFG->dbuser    = 'moodle';   // your database username
+$CFG->dbpass    = 'M00dl3';   // your database password
 $CFG->prefix    = 'mdl_';       // prefix to use for all table names
 $CFG->dboptions = array(
     'dbpersist' => false,       // should persistent database connections be
@@ -145,8 +145,7 @@ $CFG->dboptions = array(
 // If you need both intranet and Internet access please read
 // http://docs.moodle.org/en/masquerading
 
-$CFG->wwwroot   = 'https://aulaunivirtual-desarrollo.utp.edu.co';
-
+$CFG->wwwroot   = 'https://aulaunivirtual.utp.edu.co';
 
 
 //=========================================================================
@@ -162,7 +161,7 @@ $CFG->wwwroot   = 'https://aulaunivirtual-desarrollo.utp.edu.co';
 //
 // - On Windows systems you might specify something like 'c:\moodledata'
 
-$CFG->dataroot  = '/data/desarrollo';
+$CFG->dataroot  = '/data/moodledata';
 
 
 //=========================================================================
