@@ -1,0 +1,195 @@
+/* Spectrum input field */
+
+.sp-input {
+	background-color: #fff!important;
+}
+
+
+/* Fieldset */
+
+#adminsettings fieldset {
+	padding: 0;
+}
+
+
+#adminsettings {
+
+	.form-shortname,
+	.form-defaultinfo,
+	.form-description {
+		font-size: $fsxsmall;
+		color: $textcolor_lighten !important;
+	}
+
+	.form-description {
+		font-style: italic;
+	}
+
+	.form-item {
+		margin-bottom: 28px;
+	}
+}
+
+
+/* Form spacer */
+
+.mb2config-spacer,
+.mb2-pb-spacer {
+	margin: 2.2rem 0;
+}
+
+.mb2config-spacer-hr,
+.mb2form-separator,
+.mb2-pb-spacer {
+	border-top: solid 2px rgba(0,0,0,.1);
+	@include mb2_box_shadow(0 0 0 3px, rgba(0,0,0, .035));
+}
+
+
+
+
+/* Label element */
+
+.label {
+	display: inline-block;
+}
+
+
+/* Theme admin panel accordions */
+
+.mb2tmpl-accc {
+	margin: 0 0 1rem 0;
+}
+
+.mb2tmpl-acc-title {
+	margin: 0;
+	padding: .78rem;
+	font-size: $fsgeneral;
+	color: $headingscolor;
+	cursor: pointer;
+	background-color: $color_gray3;
+	position: relative;
+	@include mb2_border_radius(.28rem);
+}
+
+.mb2tmpl-acc-title:after {
+	@include mb2_font_fa();
+	content: '\f107';
+	position: absolute;
+	display: block;
+	width: 40px;
+	height: 30px;
+	line-height: 30px;
+	text-align: center;
+	right: 0;
+	top: 50%;
+	margin-top: -15px;
+	font-size: 1.4rem;
+}
+
+.mb2tmpl-acc-title.active:after {
+	content: '\f106';
+}
+
+.mb2tmpl-acccontent {
+
+	.path-admin-setting & {
+		display: none;
+	}
+
+	> div {
+		padding: 1rem;
+	 }
+}
+
+
+
+
+/* Theme settings */
+
+
+/* Theme admin panel links */
+
+.theme-links {
+	width: 350px;
+	background-color: $accent3;
+	position: fixed;
+	top: 0;
+	right: -350px;
+	z-index: 1000;
+	font-weight: $fwheadings;
+
+
+	ul {
+
+		margin: 0;
+		padding: 0;
+		list-style: none;
+
+		li {
+
+			width: 50%;
+			float: left;
+
+			a {
+				color: #fff;
+				padding: .45rem .8rem;
+				display: block;
+				border-bottom: solid 1px darken( $accent3, 6% );
+				border-left: solid 1px darken( $accent3, 6% );
+				white-space: nowrap;
+    			overflow: hidden;
+    			text-overflow: ellipsis;
+
+				i {
+					display: none;
+				}
+
+				&.link-doc {
+					background-color: $color_info;
+				}
+
+				&.link-more {
+					background-color: $color_success;
+				}
+
+				&.siteadmin-link {
+					background-color: $color_warning;
+					color: #fff;
+				}
+
+				&.link-purgecaches {
+					background-color: $color_danger;
+					color: #fff;
+				}
+
+				&:hover,
+				&:focus {
+					color: #fff;
+				}
+			}
+
+		}
+	}
+
+
+	.toggle-open {
+		position: absolute;
+		display: block;
+		top: 1.1rem;
+		font-size: 1.2rem;
+		color: rgba(255,255,255,.6);
+		left: -2.4rem;
+		width: 2.4rem;
+		height: 2.4rem;
+		line-height: 2.3rem;
+		text-align: center;
+		background-color: $accent3;
+		border: solid 1px darken($accent3, 6%);
+		border-right: 0;
+		@include mb2_border_radius(.2rem 0 0 .2rem);
+
+	}
+
+
+}
