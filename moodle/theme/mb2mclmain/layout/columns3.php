@@ -24,6 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $DB; // codigo por univirtual
 $sidePre = theme_mb2mclmain_isblock($PAGE, 'side-pre');
 $sidePost = theme_mb2mclmain_isblock($PAGE, 'side-post');
 $sidebarPos = theme_mb2mclmain_theme_setting($PAGE, 'sidebarpos', 'classic');
@@ -107,7 +108,7 @@ elseif ($sidePre || $sidePost)
 
 							<li class="nav-item" role="presentation">
 								<button class="nav-link active" id="home-tab" data-toggle="tab" data-target="#content-a" type="button" role="tab" aria-controls="home" aria-selected="true">
-									
+							
 								<?php if (theme_mb2mclmain_isblock($PAGE, 'tab-a')) : ?>
 									<?php echo $OUTPUT->blocks('tab-a', theme_mb2mclmain_block_cls($PAGE, 'tab-a','none')); ?>
 								<?php endif; ?>
@@ -151,11 +152,232 @@ elseif ($sidePre || $sidePost)
 						<div class="tab-content" id="myTabContent">
 
 							<div class="tab-pane fade show active" id="content-a" role="tabpanel" aria-labelledby="content-a-tab">
+
+							<!-- SECCION ACCESO RÁPIDO -->
+
+							<div class="seccion-acceso-rapido">
+
+							<div class="header-acceso mt-4 border-bottom">
+								<h2> Aulas de Acceso Rápido </h2>
+							</div>	
+									<!-- CARDS CONTAINER -->
+							<div class="card-container row py-5">
+
+									<?php  // Nuevo front ?>
 								
+								<?php 
+
+								/*
+									$courses = get_courses();
+									print_r($courses); 
+									//ojo
+									$courses2 = enrol_get_users_courses($USER->id, true);
+									print_r($courses2); 
+									//print_r($USER)
+									$courses = enrol_get_my_courses();;
+									print_r($courses); 
+
+								*/
+									
+									
+									$courses = enrol_get_my_courses();
+									?>
+									<?php
+									foreach ($courses as $course): ?>
+
+									
+									<?php	$mycourse = get_course($course->id);
+											//print_r($mycourse);
+											//echo theme_mb2mclmain_course_panel(); // obtiene las actividades del curso
+											//theme_mb2mclmain_get_section_activities(); // actividades de la sección
+											// 🖖🏼 print_r(get_fast_modinfo($course->id)); // información detallada de los módulos del curso
+											//✅ print_r(get_array_of_activities($course->id)); actividades del curso
+
+											//Fecha del curso
+											/*$timestamp = $mycourse->startdate;
+											$formatted_date = date('Y-m-d', $timestamp);
+											print_r($formatted_date); //1714194000*/
+											
+
+											//
+									
+											$category = $DB->get_record('course_categories',array('id'=>$mycourse->category));
+											
+											/*
+											ver actividades
+											$activities = get_array_of_activities($course->id);
+											// Verificar si $activities es un array
+											if (is_array($activities)) {
+												// Recorrer el array con un bucle foreach
+												foreach ($activities as $activity) {
+													// Aquí puedes hacer lo que necesites con cada elemento del array
+													print_r($activity);
+												}
+											} else {
+												echo "No se encontraron actividades.";
+											}
+											*/
+
+											
+
+											
+									?>
+
+
+
+
+									
+									<?php if($mycourse->category == 2 ) :?>
+									
+									<div class="card col-4 border mx-2 p-4">
+										<h4 class="my-0"> <?php print_r($mycourse->fullname); ?> </h4>
+
+										<!-- Barra de progreso -->
+										
+										<div class="barra py-2 mb-3 " style="position:relative">
+											Avance <?php echo theme_mb2mclmain_dashboard_course_progress_bar($mycourse); ?>%
+											<div class="counter" style="background:#59D06B; height:2px; width:<?php echo theme_mb2mclmain_dashboard_course_progress_bar($mycourse);?>%; border-radius:2px; position:relative; z-index:10"></div>
+											<div class="counter" style="background:#dedede; height:2px; width:100%; border-radius:2px;position:absolute; margin-top:-2px"></div>
+										</div>
+										<!-- FIn Barra de progreso -->
+
+										<div class="actividades">
+											<div class="subtitle">
+												<h5 class="my-0">Actividades Abiertas</h5>
+											</div>
+
+											<div class="items-container">
+
+											<?php
+											$activities = get_array_of_activities($course->id);
+											foreach ($activities as $activity): ?>
+
+												<!-- Actividad item -->
+												<div class="actividad">
+													<i class="fa fa-file-text-o"></i>
+													<a href="#" class="d-inline-block p-2" style="color:#02172b; text-decoration:underline"> <?php print_r($activity->name); ?> </a>
+
+
+													<?php  if (isset($activity->customdata['duedate'])) :?>
+													<?php 
+															$timestamp = $activity->customdata['duedate'];
+															$formatted_date = date('d-m-Y', $timestamp);
+															
+													?>
+													<span class="d-block mb-2" style="font-size:0.8rem; line-height: 0;"> Fecha de cierre <?php print_r($formatted_date); ?></span>
+												
+													<?php //print_r($activity); ?>
+													
+													
+													<?php endif; ?>
+												</div>
+												<!-- Fin Actividad Item -->
+	
+												<?php endforeach; ?>
+
+											</div>
+
+										</div>
+
+										<div class="programa d-flex justify-content-between align-items-center mt-3">	
+											<span class="py-1 px-3" style=" border-radius:12px; background-color:#02172b; color:white; font-size:0.8rem"><?php echo $category->name ?></span>
+											<a href="#" class="cta d-inline-block px-3 py-1" style="background-color:#f2de3c; color:#02172b; font-weight:bold; border-radius:2px ">Ir al curso</a>
+										</div>
+
+									</div>
+
+									<?php endif;?>
+
+
+									<?php endforeach; ?>
+								
+								<?php  // FIN Nuevo front ?>
+
+
+
+							</div> 
+								<!-- FIN CARD CONTAINER -->
+								
+
+							</div>
+							<!-- FIN SECCIÓN ACCESO RÁPIDO -->
+
+
+
+							<!-- SECCIÓN METACURSOS -->
+
+							<div class="seccion-metacursos">
+
+								<div class="header-acceso mt-4 border-bottom">
+									<h2> Procesos de formación activos </h2>
+								</div>
+
+								<div class="card-container row py-5">
+
+								<?php $metacourses = enrol_get_my_courses(); 
+									foreach( $metacourses as $metacourse ):
+								?>
+									<?php if($metacourse->category == 3 ): ?>
+											<!-- METACURSO -->
+									<div class="card col-4 border mx-2 p-4">
+										<div class="imagen mb-4" style="background:linear-gradient(180deg, rgba(218,216,60,1) 30%, rgba(101,215,164,1) 100%); height:128px">
+
+										</div>
+										<h4 class="mt-0 metacurso"><?php echo $metacourse->fullname ?></h4>
+										<p>Pregrado</p>
+										<a href="#"> Abrir</a>
+									</div>
+											<!-- FIN METACURSO -->
+									<?php endif; ?>
+								<?php endforeach; ?>
+																				
+
+								</div>
+
+							</div>
+
+							<!-- FIN SECCIÓN METACURSOS -->
+
+							<!-- SECCIÓN AULAS HISTÓRICAS -->
+
+							<div class="seccion-aulas">
+								<div class="header-acceso mt-4 border-bottom">
+									<h2> Aulas históricas </h2>
+								</div>	
+								<!-- FIN SECCIÓN AULAS HISTÓRICAS -->
+								<div class="card-container row py-5">	
+									<?php 
+									$archives = enrol_get_my_courses();
+									foreach($archives as $archived):?>
+
+										<?php if($archived->category == 2 ): //DEfinir la categoría de los archivados ?>		
+											<div class="card col-4 border mx-2 p-4">
+
+													<h4 class="mt-0 metacurso"><?php echo $archived->fullname ?></h4>
+													<p>Pregrado</p>
+													<a href="#"> Abrir</a>
+											</div>	
+										<?php endif; ?>
+										
+										<?php endforeach; ?>
+											
+								</div>	
+							</div>
+
+
+
+
+
+
+								
+								
+
 								<?php if (theme_mb2mclmain_isblock($PAGE, 'content-a')) : ?>
 									<?php echo $OUTPUT->blocks('content-a', theme_mb2mclmain_block_cls($PAGE, 'content-a','none')); ?>
 								<?php endif; ?>
 								
+								
+
 							</div>
 							<div class="tab-pane fade" id="content-b" role="tabpanel" aria-labelledby="content-b-tab">
 
