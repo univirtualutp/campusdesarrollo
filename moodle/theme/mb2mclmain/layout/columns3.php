@@ -317,7 +317,7 @@ elseif ($sidePre || $sidePost)
 								<?php $metacourses = enrol_get_my_courses(); 
 									foreach( $metacourses as $metacourse ):
 								?>
-									<?php if($metacourse->category == 3 ): ?>
+									<?php if($metacourse->category == 31 ): ?>
 											<!-- METACURSO -->
 									<div class="card col-4 border mx-2 p-4">
 										<div class="imagen mb-4" style="background:linear-gradient(180deg, rgba(218,216,60,1) 30%, rgba(101,215,164,1) 100%); height:128px">
