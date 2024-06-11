@@ -350,7 +350,7 @@ elseif ($sidePre || $sidePost)
 									$archives = enrol_get_my_courses();
 									foreach($archives as $archived):?>
 
-										<?php if($archived->category == 2 ): //DEfinir la categoría de los archivados ?>		
+										<?php if($archived->category == 27 ): //DEfinir la categoría de los archivados ?>		
 											<div class="card col-4 border mx-2 p-4">
 
 													<h4 class="mt-0 metacurso"><?php echo $archived->fullname ?></h4>
