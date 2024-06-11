@@ -161,7 +161,7 @@ elseif ($sidePre || $sidePost)
 								<h2> Aulas de Acceso Rápido </h2>
 							</div>	
 									<!-- CARDS CONTAINER -->
-							<div class="card-container row py-5">
+							<div class="cards-container row py-5">
 
 									<?php  // Nuevo front ?>
 								
@@ -312,12 +312,12 @@ elseif ($sidePre || $sidePost)
 									<h2> Procesos de formación activos </h2>
 								</div>
 
-								<div class="card-container row py-5">
+								<div class="cards-container row py-5">
 
 								<?php $metacourses = enrol_get_my_courses(); 
 									foreach( $metacourses as $metacourse ):
 								?>
-									<?php if($metacourse->category == 29 ): ?>
+									<?php if($metacourse->category == 3 ): ?>
 											<!-- METACURSO -->
 									<div class="card col-4 border mx-2 p-4">
 										<div class="imagen mb-4" style="background:linear-gradient(180deg, rgba(218,216,60,1) 30%, rgba(101,215,164,1) 100%); height:128px">
@@ -345,7 +345,7 @@ elseif ($sidePre || $sidePost)
 									<h2> Aulas históricas </h2>
 								</div>	
 								<!-- FIN SECCIÓN AULAS HISTÓRICAS -->
-								<div class="card-container row py-5">	
+								<div class="cards-container row py-5">	
 									<?php 
 									$archives = enrol_get_my_courses();
 									foreach($archives as $archived):?>
