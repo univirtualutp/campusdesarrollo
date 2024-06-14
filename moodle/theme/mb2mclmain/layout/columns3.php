@@ -232,6 +232,9 @@ elseif ($sidePre || $sidePost)
 									<div class="card col-4 border mx-2 p-4">
 										<h4 class="my-0"> <?php print_r($mycourse->fullname); ?> </h4>
 
+												<?php 
+										$modlink = new moodle_url( '/course/view.php', array('id'=>$course->id) );
+										?>
 										<!-- Barra de progreso -->
 										
 										<div class="barra py-2 mb-3 " style="position:relative">
@@ -252,10 +255,15 @@ elseif ($sidePre || $sidePost)
 											$activities = get_array_of_activities($course->id);
 											foreach ($activities as $activity): ?>
 
+																	<?php  //print_r( $activity ) // Se puede tomar de esta salida parte de la url ?>
+											<?php 
+													$modlink2 = new moodle_url( '/mod/'. $activity->mod .'/view.php', array('id'=>$activity->cm) );
+											?>
+
 												<!-- Actividad item -->
 												<div class="actividad">
 													<i class="fa fa-file-text-o"></i>
-													<a href="#" class="d-inline-block p-2" style="color:#02172b; text-decoration:underline"> <?php print_r($activity->name); ?> </a>
+													<a href="<?php echo $modlink2 ?>" class="d-inline-block p-2" style="color:#02172b; text-decoration:underline"> <?php print_r($activity->name); ?> </a>
 
 
 													<?php  if (isset($activity->customdata['duedate'])) :?>
@@ -281,7 +289,7 @@ elseif ($sidePre || $sidePost)
 
 										<div class="programa d-flex justify-content-between align-items-center mt-3">	
 											<span class="py-1 px-3" style=" border-radius:12px; background-color:#02172b; color:white; font-size:0.8rem"><?php echo $category->name ?></span>
-											<a href="#" class="cta d-inline-block px-3 py-1" style="background-color:#f2de3c; color:#02172b; font-weight:bold; border-radius:2px ">Ir al curso</a>
+											<a href="<?php echo $modlink  ?>" class="cta d-inline-block px-3 py-1" style="background-color:#f2de3c; color:#02172b; font-weight:bold; border-radius:2px ">Ir al curso</a>
 										</div>
 
 									</div>
