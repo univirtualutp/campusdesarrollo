@@ -253,9 +253,15 @@ elseif ($sidePre || $sidePost)
     $activities = get_array_of_activities($course->id);
     $MAX_NUM_ACTIVITIES = 3;
     $current_time = time(); // Obtener el tiempo actual
-    $activities_shown = false; // Variable para rastrear si se ha mostrado alguna actividad
+    $activities_shown = 0; // Contador de actividades mostradas
+    $activities_found = false; // Variable para rastrear si se han encontrado actividades válidas
 
     foreach ($activities as $activity): 
+        // Detener el bucle si se ha alcanzado el máximo de actividades a mostrar
+        if ($activities_shown >= $MAX_NUM_ACTIVITIES) {
+            break;
+        }
+
         // Filtro que no se muestre las que son tipo label
         if ($activity->mod !== 'label'):
             // Verificar y mostrar las fechas si están presentes
@@ -277,7 +283,8 @@ elseif ($sidePre || $sidePost)
             }
             
             if ($timestamp !== null):
-                $activities_shown = true; // Marcar que se ha mostrado al menos una actividad
+                $activities_found = true; // Marcar que se ha encontrado al menos una actividad válida
+                $activities_shown++; // Incrementar el contador de actividades mostradas
                 $formatted_date = date('d-m-Y', $timestamp);
                 $modlink2 = new moodle_url('/mod/' . $activity->mod . '/view.php', array('id' => $activity->cm));
                 ?>
@@ -294,12 +301,13 @@ elseif ($sidePre || $sidePost)
         endif; 
     endforeach;
 
-    if (!$activities_shown): // Si no se ha mostrado ninguna actividad
+    if (!$activities_found): // Si no se ha encontrado ninguna actividad válida
         ?>
-        <p>No tienes actividades abiertas.</p>
+        <p>No hay actividades abiertas.</p>
     <?php endif; 
     ?>
 </div>
+
 
 
 										</div>
