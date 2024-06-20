@@ -248,42 +248,59 @@ elseif ($sidePre || $sidePost)
 											<div class="subtitle">
 												<h5 class="my-0">Actividades Abiertas</h5>
 											</div>
+<div class="items-container">
+    <?php
+    $activities = get_array_of_activities($course->id);
+    $MAX_NUM_ACTIVITIES = 3;
+    $current_time = time(); // Obtener el tiempo actual
+    $activities_shown = false; // Variable para rastrear si se ha mostrado alguna actividad
 
-											<div class="items-container">
+    foreach ($activities as $activity): 
+        // Filtro que no se muestre las que son tipo label
+        if ($activity->mod !== 'label'):
+            // Verificar y mostrar las fechas si están presentes
+            $timestamp = null;
+            $date_label = '';
+            
+            if (isset($activity->customdata['cutoffdate']) && $activity->customdata['cutoffdate'] >= $current_time) {
+                $timestamp = $activity->customdata['cutoffdate'];
+                $date_label = 'Fecha límite: ';
+            } elseif (isset($activity->customdata['duedate']) && $activity->customdata['duedate'] >= $current_time) {
+                $timestamp = $activity->customdata['duedate'];
+                $date_label = 'Fecha de entrega: ';
+            } elseif (isset($activity->customdata['allowsubmissionsfromdate']) && $activity->customdata['allowsubmissionsfromdate'] >= $current_time) {
+                $timestamp = $activity->customdata['allowsubmissionsfromdate'];
+                $date_label = 'Fecha de inicio de entregas: ';
+            } elseif (isset($activity->customdata['deadline']) && $activity->customdata['deadline'] >= $current_time) {
+                $timestamp = $activity->customdata['deadline'];
+                $date_label = 'Fecha límite: ';
+            }
+            
+            if ($timestamp !== null):
+                $activities_shown = true; // Marcar que se ha mostrado al menos una actividad
+                $formatted_date = date('d-m-Y', $timestamp);
+                $modlink2 = new moodle_url('/mod/' . $activity->mod . '/view.php', array('id' => $activity->cm));
+                ?>
+                <!-- Actividad item -->
+                <div class="actividad">
+                    <i class="fa fa-file-text-o"></i>
+                    <a href="<?php echo $modlink2 ?>" class="d-inline-block p-2" style="color:#02172b; text-decoration:underline">
+                        <?php echo $activity->name; ?>
+                    </a>
+                    <span class="d-block mb-2" style="font-size:0.8rem; line-height: 0;"><?php echo $date_label . $formatted_date; ?></span>
+                </div>
+                <!-- Fin Actividad Item -->
+            <?php endif;
+        endif; 
+    endforeach;
 
-											<?php
-											$activities = get_array_of_activities($course->id);
-											foreach ($activities as $activity): ?>
+    if (!$activities_shown): // Si no se ha mostrado ninguna actividad
+        ?>
+        <p>No tienes actividades abiertas.</p>
+    <?php endif; 
+    ?>
+</div>
 
-																	<?php  print_r( $activity ) // Se puede tomar de esta salida parte de la url ?>
-											<?php 
-													$modlink2 = new moodle_url( '/mod/'. $activity->mod .'/view.php', array('id'=>$activity->cm) );
-											?>
-
-												<!-- Actividad item -->
-												<div class="actividad">
-													<i class="fa fa-file-text-o"></i>
-													<a href="<?php echo $modlink2 ?>" class="d-inline-block p-2" style="color:#02172b; text-decoration:underline"> <?php print_r($activity->name); ?> </a>
-
-
-													<?php  if (isset($activity->customdata['duedate'])) :?>
-													<?php 
-															$timestamp = $activity->customdata['duedate'];
-															$formatted_date = date('d-m-Y', $timestamp);
-															
-													?>
-													<span class="d-block mb-2" style="font-size:0.8rem; line-height: 0;"> Fecha de cierre <?php print_r($formatted_date); ?></span>
-												
-													<?php //print_r($activity); ?>
-													
-													
-													<?php endif; ?>
-												</div>
-												<!-- Fin Actividad Item -->
-	
-												<?php endforeach; ?>
-
-											</div>
 
 										</div>
 
