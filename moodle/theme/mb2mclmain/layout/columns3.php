@@ -255,7 +255,7 @@ elseif ($sidePre || $sidePost)
 											$activities = get_array_of_activities($course->id);
 											foreach ($activities as $activity): ?>
 
-																	<?php  //print_r( $activity ) // Se puede tomar de esta salida parte de la url ?>
+																	<?php  print_r( $activity ) // Se puede tomar de esta salida parte de la url ?>
 											<?php 
 													$modlink2 = new moodle_url( '/mod/'. $activity->mod .'/view.php', array('id'=>$activity->cm) );
 											?>
