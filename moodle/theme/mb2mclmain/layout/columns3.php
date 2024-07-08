@@ -395,7 +395,7 @@ elseif ($sidePre || $sidePost)
 
 						        foreach($archives as $archived): 
 
-						            if($archived->category == 27 && $archived->enddate < $current_time): 
+						            if($archived->enddate < $current_time): 
 						                $formatted_course_date = date('d-m-Y', $archived->enddate);
 						                $modlink4 = new moodle_url('/course/view.php', array('id' => $archived->id));
 						        ?>
