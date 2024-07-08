@@ -233,7 +233,7 @@ elseif ($sidePre || $sidePost)
 									if($mycourse->category != 29 && $mycourse->enddate > $current_time ) :?>
 									
 									<div class="card col-4 border mx-1 p-3">
-										<h4 class="my-0"> <i class="fas fa-chalkboard"></i> <?php print_r($mycourse->fullname); ?> </h4>
+										<h4 class="my-0"> <i class="fas fa-chalkboard" style="color:#00B4DD; display:inline-block; margin-right:4px"></i> <?php print_r($mycourse->fullname); ?> </h4>
 
 												<?php 
 										$modlink = new moodle_url( '/course/view.php', array('id'=>$course->id) );
