@@ -388,9 +388,9 @@ elseif ($sidePre || $sidePost)
 						        <h2> <i class="fas fa-history"></i> Aulas históricas </h2>
 						    </div>
 						    <!-- FIN SECCIÓN AULAS HISTÓRICAS -->
-						    <div class="cards-container row py-5 justify-content-start ">
+						    <div class="cards-container row py-5 justify-content-start align-items-start">
 						        <?php 
-						        $archives = get_courses(); //enrol_get_my_courses();
+						        $archives = enrol_get_my_courses();//get_courses(); //enrol_get_my_courses();
 						        //$current_time = time(); // Obtener el tiempo actual
 
 						        foreach($archives as $archived): 
