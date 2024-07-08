@@ -232,7 +232,7 @@ elseif ($sidePre || $sidePost)
 									$current_time = time();
 									if($mycourse->category != 29 && $mycourse->enddate > $current_time ) :?>
 									
-									<div class="card col-4 border mx-2 p-4">
+									<div class="card col-4 border mx-1 p-3">
 										<h4 class="my-0"> <?php print_r($mycourse->fullname); ?> </h4>
 
 												<?php 
@@ -315,10 +315,13 @@ elseif ($sidePre || $sidePost)
 
 										</div>
 
-										<div class="programa d-flex justify-content-between align-items-center mt-3">	
-											<span class="py-1 px-3" style=" border-radius:12px; background-color:#02172b; color:white; font-size:0.8rem"><?php echo $category->name ?></span>
-											<a href="<?php echo $modlink  ?>" class="cta d-inline-block px-3 py-1" style="background-color:#f2de3c; color:#02172b; font-weight:bold; border-radius:2px ">Ir al curso</a>
+										<div class="programa  mt-3">	
+											<span class="py-0 px-1" style="display:inline-block; border-radius:4px; background-color:#02172b; color:white; font-size:0.7rem"><?php echo $category->name ?></span>
+											<div class="separator" class="d-block"></div>
+											<a href="<?php echo $modlink  ?>" class="cta d-inline-block px-3 py-1 mt-1" style="background-color:#f2de3c; color:#02172b; font-weight:bold; border-radius:4px; font-size:0.8rem ;">Ir al curso</a>
 										</div>
+
+
 
 									</div>
 
