@@ -227,7 +227,10 @@ elseif ($sidePre || $sidePost)
 
 
 									
-									<?php if($mycourse->category != 29 ) :?>
+									<?php 
+
+									$current_time = time();
+									if($mycourse->category != 29 && $mycourse->enddate > $current_time ) :?>
 									
 									<div class="card col-4 border mx-2 p-4">
 										<h4 class="my-0"> <?php print_r($mycourse->fullname); ?> </h4>
@@ -252,7 +255,7 @@ elseif ($sidePre || $sidePost)
     <?php
     $activities = get_array_of_activities($course->id);
     $MAX_NUM_ACTIVITIES = 3;
-    $current_time = time(); // Obtener el tiempo actual
+    //$current_time = time(); // Obtener el tiempo actual
     $activities_shown = 0; // Contador de actividades mostradas
     $activities_found = false; // Variable para rastrear si se han encontrado actividades válidas
 
@@ -386,7 +389,7 @@ elseif ($sidePre || $sidePost)
 						    <div class="cards-container row py-5">
 						        <?php 
 						        $archives = get_courses(); //enrol_get_my_courses();
-						        $current_time = time(); // Obtener el tiempo actual
+						        //$current_time = time(); // Obtener el tiempo actual
 
 						        foreach($archives as $archived): 
 
