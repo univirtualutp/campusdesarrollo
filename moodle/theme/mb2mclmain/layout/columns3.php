@@ -158,7 +158,7 @@ elseif ($sidePre || $sidePost)
 							<div class="seccion-acceso-rapido">
 
 							<div class="header-acceso mt-4 border-bottom">
-								<h2> Aulas de Acceso Rápido </h2>
+								<h2> <i class="fas fa-rocket"></i> Aulas de Acceso Rápido </h2>
 							</div>	
 									<!-- CARDS CONTAINER -->
 							<div class="cardlists-container row py-5" style="row-gap: 1rem;">
@@ -233,7 +233,7 @@ elseif ($sidePre || $sidePost)
 									if($mycourse->category != 29 && $mycourse->enddate > $current_time ) :?>
 									
 									<div class="card col-4 border mx-1 p-3">
-										<h4 class="my-0"> <?php print_r($mycourse->fullname); ?> </h4>
+										<h4 class="my-0"> <i class="fas fa-chalkboard"></i> <?php print_r($mycourse->fullname); ?> </h4>
 
 												<?php 
 										$modlink = new moodle_url( '/course/view.php', array('id'=>$course->id) );
@@ -293,8 +293,9 @@ elseif ($sidePre || $sidePost)
                 ?>
                 <!-- Actividad item -->
                 <div class="actividad">
-                    <i class="fa fa-file-text-o"></i>
+                    
                     <a href="<?php echo $modlink2 ?>" class="d-inline-block p-2" style="color:#02172b; text-decoration:underline">
+                        <i class="fa fa-file-text-o"></i>
                         <?php echo $activity->name; ?>
                     </a>
                     <span class="d-block mb-2" style="font-size:0.8rem; line-height: 0;"><?php echo $date_label . $formatted_date; ?></span>
