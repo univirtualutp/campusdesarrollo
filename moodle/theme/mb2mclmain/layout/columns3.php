@@ -385,7 +385,7 @@ elseif ($sidePre || $sidePost)
 
 						<div class="seccion-aulas">
 						    <div class="header-acceso mt-4 border-bottom">
-						        <h2> Aulas históricas </h2>
+						        <h2> <i class="fas fa-history"></i> Aulas históricas </h2>
 						    </div>
 						    <!-- FIN SECCIÓN AULAS HISTÓRICAS -->
 						    <div class="cards-container row py-5">
