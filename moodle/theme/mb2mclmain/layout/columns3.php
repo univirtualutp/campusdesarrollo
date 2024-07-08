@@ -345,12 +345,12 @@ elseif ($sidePre || $sidePost)
 
 
 
-							<!-- SECCIÓN METACURSOS -->
+<!-- SECCIÓN METACURSOS -->
 
 							<div class="seccion-metacursos">
 
 								<div class="header-acceso mt-4 border-bottom">
-									<h2> Procesos de formación activos </h2>
+									<h2> <i class="fas fa-cubes"></i> Procesos de formación activos </h2>
 								</div>
 
 								<div class="cards-container row py-5">
@@ -365,11 +365,8 @@ elseif ($sidePre || $sidePost)
 									?>
 											<!-- METACURSO -->
 									<div class="card col-4 border mx-2 p-4">
-										<div class="imagen mb-4" style="background:linear-gradient(180deg, rgba(218,216,60,1) 30%, rgba(101,215,164,1) 100%); height:128px">
-											<a href="<?php echo $modlink3 ?>" style="display:block; width:100%; height:100%"></a>
-										</div>
-										<h4 class="mt-0 metacurso"><?php echo $metacourse->fullname ?></h4>
-										<p>Pregrado</p>
+
+										<h4 class="mt-0 metacurso"> <a href="<?php echo $modlink3 ?>" style="display:block; width:100%; height:100%"><i class="fas fa-folder d-inline-block mr-1" ></i>  <?php echo $metacourse->fullname ?></a></h4>
 										<a href="<?php echo $modlink3 ?>"> Abrir</a>
 									</div>
 											<!-- FIN METACURSO -->
@@ -382,6 +379,7 @@ elseif ($sidePre || $sidePost)
 							</div>
 
 							<!-- FIN SECCIÓN METACURSOS -->
+
 
 							<!-- SECCIÓN AULAS HISTÓRICAS -->
 
