@@ -353,7 +353,7 @@ elseif ($sidePre || $sidePost)
 									<h2> <i class="fas fa-cubes"></i> Procesos de formación activos </h2>
 								</div>
 
-								<div class="cards-container row py-5">
+								<div class="cards-container row py-5 justify-content-start">
 
 								<?php $metacourses = enrol_get_my_courses(); 
 									foreach( $metacourses as $metacourse ):
@@ -388,7 +388,7 @@ elseif ($sidePre || $sidePost)
 						        <h2> <i class="fas fa-history"></i> Aulas históricas </h2>
 						    </div>
 						    <!-- FIN SECCIÓN AULAS HISTÓRICAS -->
-						    <div class="cards-container row py-5">
+						    <div class="cards-container row py-5 justify-content-start ">
 						        <?php 
 						        $archives = get_courses(); //enrol_get_my_courses();
 						        //$current_time = time(); // Obtener el tiempo actual
