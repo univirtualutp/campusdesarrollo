@@ -157,7 +157,7 @@ elseif ($sidePre || $sidePost)
 
 							<div class="seccion-acceso-rapido">
 
-							<div class="header-acceso mt-4 border-bottom">
+							<div class="header-acceso mt-4 border-bottom pt-5 pl-4 pb-4" style="background-image:url(https://img.playbook.com/9ZnGzQNH478OK9w9ak51tzDoS7EALoui74lDQyvvHvA/Z3M6Ly9wbGF5Ym9v/ay1hc3NldHMtcHVi/bGljLzE1MzMzMDdm/LTM3YWMtNDc3MS05/YmZhLWU0YTg4ZDY1/MTQ4Ng);background-size:cover;border-radius:0.4rem 0.4rem 0 0; margin-left:-0.80rem">
 								<h2> <i class="fas fa-rocket"></i> Aulas de Acceso Rápido </h2>
 							</div>	
 									<!-- CARDS CONTAINER -->
@@ -349,7 +349,7 @@ elseif ($sidePre || $sidePost)
 
 							<div class="seccion-metacursos">
 
-								<div class="header-acceso mt-4 border-bottom">
+								<div class="header-acceso mt-4 border-bottom pt-5 pl-4 pb-4" style="background-image:url(https://img.playbook.com/QKPmHUmuFWOZP3BNwdTVlp8BF5DsBt1yWJuCzLKdsp0/Z3M6Ly9wbGF5Ym9v/ay1hc3NldHMtcHVi/bGljLzMyYThlY2Nj/LWY4NzQtNDE5ZS1h/YTkxLTYzNWExODdi/NGNmYw);background-size:cover;border-radius:0.4rem 0.4rem 0 0; margin-left:-0.80rem">
 									<h2> <i class="fas fa-cubes"></i> Procesos de formación activos </h2>
 								</div>
 
@@ -384,7 +384,7 @@ elseif ($sidePre || $sidePost)
 							<!-- SECCIÓN AULAS HISTÓRICAS -->
 
 						<div class="seccion-aulas">
-						    <div class="header-acceso mt-4 border-bottom">
+						    <div class="header-acceso mt-4 border-bottom pt-5 pl-4 pb-4" style="background-image:url(https://img.playbook.com/2GWxFcRUx6v8AIwNR6E6L69kCwjLPScmRC_YE39LETg/Z3M6Ly9wbGF5Ym9v/ay1hc3NldHMtcHVi/bGljL2U0OTNkMmJh/LWM1ODMtNGVjNy05/Y2Q5LWMyMjdmNjEz/YTBkOA">
 						        <h2> <i class="fas fa-history"></i> Aulas históricas </h2>
 						    </div>
 						    
