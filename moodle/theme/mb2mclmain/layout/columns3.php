@@ -180,7 +180,7 @@ elseif ($sidePre || $sidePost)
 								*/
 									
 									
-									$courses = enrol_get_my_courses();
+									$courses = enrol_get_my_courses('enddate');
 									?>
 									<?php
 									foreach ($courses as $course): ?>
@@ -364,9 +364,9 @@ elseif ($sidePre || $sidePost)
 										$modlink3 = new moodle_url('/course/view.php', array('id' => $metacourse->id));
 									?>
 											<!-- METACURSO -->
-									<div class="card col-4 border mx-2 p-4">
+									<div class="card col-3 border mx-2 p-4">
 
-										<h4 class="mt-0 metacurso"> <a href="<?php echo $modlink3 ?>" style="display:block; width:100%; height:100%"><i class="fas fa-folder d-inline-block mr-1" ></i>  <?php echo $metacourse->fullname ?></a></h4>
+								<h4 class="mt-0 metacurso"> <a href="<?php echo $modlink3 ?>" style="display:block; width:100%; height:100%; font-size:1.25rem"><i class="fas fa-folder d-inline-block mr-1" ></i>  <?php echo $metacourse->fullname ?></a></h4>
 										<a href="<?php echo $modlink3 ?>"> Abrir</a>
 									</div>
 											<!-- FIN METACURSO -->
@@ -387,10 +387,10 @@ elseif ($sidePre || $sidePost)
 						    <div class="header-acceso mt-4 border-bottom">
 						        <h2> <i class="fas fa-history"></i> Aulas históricas </h2>
 						    </div>
-						    <!-- FIN SECCIÓN AULAS HISTÓRICAS -->
+						    
 						    <div class="cards-container row py-5 justify-content-start align-items-start">
 						        <?php 
-						        $archives = enrol_get_my_courses();//get_courses(); //enrol_get_my_courses();
+						        $archives = enrol_get_my_courses('enddate');//get_courses(); //enrol_get_my_courses();
 						        //$current_time = time(); // Obtener el tiempo actual
 
 						        foreach($archives as $archived): 
@@ -411,6 +411,7 @@ elseif ($sidePre || $sidePost)
 						    </div>
 						</div>
 
+							<!-- FIN SECCIÓN AULAS HISTÓRICAS -->
 
 
 
