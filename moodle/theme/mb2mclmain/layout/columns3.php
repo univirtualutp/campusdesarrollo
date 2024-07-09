@@ -400,7 +400,7 @@ elseif ($sidePre || $sidePost)
 						                $modlink4 = new moodle_url('/course/view.php', array('id' => $archived->id));
 						        ?>
 						                <div class="card col-4 border mx-2 p-4">
-						                    <h4 class="mt-0 metacurso"><?php echo $archived->fullname; ?></h4>
+						                    <h4 class="mt-0 metacurso" style="font-size:1.25rem"> <i class="fas fa-archive d-inline-block mr-1"></i>  <?php echo $archived->fullname; ?></h4>
 						                    <a href="<?php echo $modlink4; ?>"> Ir al curso </a>
 						                    <p>Fecha de finalización: <?php echo $formatted_course_date; ?></p>
 						                </div>
