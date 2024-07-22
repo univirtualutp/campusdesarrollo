@@ -251,26 +251,26 @@ elseif ($sidePre || $sidePost)
 											<div class="subtitle">
 												<h5 class="my-0">Actividades Abiertas</h5>
 											</div>
+<!-- +=========================+ -->
+
+
 <div class="items-container">
     <?php
+    $display = 'd-block';
     $activities = get_array_of_activities($course->id);
-    $MAX_NUM_ACTIVITIES = 3;
-    //$current_time = time(); // Obtener el tiempo actual
+    $MAX_NUM_ACTIVITIES = 2;
+    $current_time = time(); // Obtener el tiempo actual
     $activities_shown = 0; // Contador de actividades mostradas
     $activities_found = false; // Variable para rastrear si se han encontrado actividades válidas
+    $additional_activities = []; // Almacenar actividades adicionales
 
     foreach ($activities as $activity): 
-        // Detener el bucle si se ha alcanzado el máximo de actividades a mostrar
-        if ($activities_shown >= $MAX_NUM_ACTIVITIES) {
-            break;
-        }
-
         // Filtro que no se muestre las que son tipo label
         if ($activity->mod !== 'label'):
             // Verificar y mostrar las fechas si están presentes
             $timestamp = null;
             $date_label = '';
-            
+
             if (isset($activity->customdata['cutoffdate']) && $activity->customdata['cutoffdate'] >= $current_time) {
                 $timestamp = $activity->customdata['cutoffdate'];
                 $date_label = 'Fecha límite: ';
@@ -284,33 +284,67 @@ elseif ($sidePre || $sidePost)
                 $timestamp = $activity->customdata['deadline'];
                 $date_label = 'Fecha límite: ';
             }
-            
+
             if ($timestamp !== null):
                 $activities_found = true; // Marcar que se ha encontrado al menos una actividad válida
-                $activities_shown++; // Incrementar el contador de actividades mostradas
                 $formatted_date = date('d-m-Y', $timestamp);
                 $modlink2 = new moodle_url('/mod/' . $activity->mod . '/view.php', array('id' => $activity->cm));
-                ?>
-                <!-- Actividad item -->
-                <div class="actividad">
-                    
-                    <a href="<?php echo $modlink2 ?>" class="d-inline-block p-2" style="color:#02172b; text-decoration:underline">
+                
+                if ($activities_shown < $MAX_NUM_ACTIVITIES):
+                    $activities_shown++; // Incrementar el contador de actividades mostradas
+                    ?>
+                    <!-- Actividad item -->
+                    <div class="actividad">
                         <i class="fa fa-file-text-o"></i>
-                        <?php echo $activity->name; ?>
-                    </a>
-                    <span class="d-block mb-2" style="font-size:0.8rem; line-height: 0;"><?php echo $date_label . $formatted_date; ?></span>
-                </div>
-                <!-- Fin Actividad Item -->
-            <?php endif;
-        endif; 
+                        <a href="<?php echo $modlink2 ?>" class="d-inline-block p-2" style="color:#02172b; text-decoration:underline">
+                            <?php echo $activity->name; ?>
+                        </a>
+                        <span class="d-block mb-2" style="font-size:0.8rem; line-height: 0;"><?php echo $date_label . $formatted_date; ?></span>
+                    </div>
+                    <!-- Fin Actividad Item -->
+                <?php
+                else:
+                    // Agregar actividad a la lista de adicionales
+                    $additional_activities[] = [
+                        'modlink' => $modlink2,
+                        'name' => $activity->name,
+                        'date_label' => $date_label,
+                        'formatted_date' => $formatted_date
+                    ];
+                endif;
+            endif;
+        endif;
     endforeach;
 
     if (!$activities_found): // Si no se ha encontrado ninguna actividad válida
         ?>
         <p>No hay actividades abiertas.</p>
-    <?php endif; 
-    ?>
+        <?php $display = 'd-none' ?>
+    <?php endif; ?>
+
+    <?php 
+    if ($activities_found && count($additional_activities) > 0): ?>
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#additionalActivities" aria-expanded="false" aria-controls="additionalActivities">
+        Ver más actividades
+        </button>
+        <div class="collapse" id="additionalActivities">
+            <?php foreach ($additional_activities as $activity): ?>
+                <!-- Actividad adicional item -->
+                <div class="actividad">
+                    <i class="fa fa-file-text-o"></i>
+                    <a href="<?php echo $activity['modlink'] ?>" class="d-inline-block p-2" style="color:#02172b; text-decoration:underline">
+                        <?php echo $activity['name']; ?>
+                    </a>
+                    <span class="d-block mb-2" style="font-size:0.8rem; line-height: 0;"><?php echo $activity['date_label'] . $activity['formatted_date']; ?></span>
+                </div>
+                <!-- Fin Actividad adicional item -->
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 </div>
+
+
+<!-- +=========================+ -->
 
 
 
