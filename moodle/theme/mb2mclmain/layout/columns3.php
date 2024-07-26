@@ -381,36 +381,67 @@ elseif ($sidePre || $sidePost)
 
 <!-- SECCIÓN METACURSOS -->
 
-							<div class="seccion-metacursos">
 
-								<div class="header-acceso mt-4 border-bottom pt-5 pl-4 pb-4" style="background-image:url(https://img.playbook.com/QKPmHUmuFWOZP3BNwdTVlp8BF5DsBt1yWJuCzLKdsp0/Z3M6Ly9wbGF5Ym9v/ay1hc3NldHMtcHVi/bGljLzMyYThlY2Nj/LWY4NzQtNDE5ZS1h/YTkxLTYzNWExODdi/NGNmYw);background-size:cover;border-radius:0.4rem 0.4rem 0 0; margin-left:-0.80rem">
-									<h2> <i class="fas fa-cubes"></i> Procesos de formación activos </h2>
-								</div>
+<?php
+// Obtener los metacursos
+$metacourses = enrol_get_my_courses();
+$metacourses_found = false;
 
-								<div class="cards-container row py-5 justify-content-start">
+// Verificar si hay metacursos en la categoría específica
+foreach ($metacourses as $metacourse) {
+    if ($metacourse->category == 29) {
+        $metacourses_found = true;
+        break;
+    }
+}
+?>
+<!-- SECCIÓN METACURSOS -->
 
-								<?php $metacourses = enrol_get_my_courses(); 
-									foreach( $metacourses as $metacourse ):
-								?>
-									<?php if($metacourse->category == 29 ): ?>
 
-									<?php 
-										$modlink3 = new moodle_url('/course/view.php', array('id' => $metacourse->id));
-									?>
-											<!-- METACURSO -->
-									<div class="card col-3 border mx-2 p-4">
+<?php
+// Obtener los metacursos
+$metacourses = enrol_get_my_courses();
+$metacourses_found = false;
 
-								<h4 class="mt-0 metacurso"> <a href="<?php echo $modlink3 ?>" style="display:block; width:100%; height:100%; font-size:1.25rem"><i class="fas fa-folder d-inline-block mr-1" ></i>  <?php echo $metacourse->fullname ?></a></h4>
-										<a href="<?php echo $modlink3 ?>"> Abrir</a>
-									</div>
-											<!-- FIN METACURSO -->
-									<?php endif; ?>
-								<?php endforeach; ?>
-																				
+// Verificar si hay metacursos en la categoría específica
+foreach ($metacourses as $metacourse) {
+    if ($metacourse->category == 29) {
+        $metacourses_found = true;
+        break;
+    }
+}
+?>
 
-								</div>
+<?php if ($metacourses_found): ?>
+    <!-- SECCIÓN METACURSOS -->
+    <div class="seccion-metacursos">
+        <div class="header-acceso mt-4 border-bottom pt-5 pl-4 pb-4" style="background-image:url(https://img.playbook.com/QKPmHUmuFWOZP3BNwdTVlp8BF5DsBt1yWJuCzLKdsp0/Z3M6Ly9wbGF5Ym9v/ay1hc3NldHMtcHVi/bGljLzMyYThlY2Nj/LWY4NzQtNDE5ZS1h/YTkxLTYzNWExODdi/NGNmYw);background-size:cover;border-radius:0.4rem 0.4rem 0 0; margin-left:-0.80rem">
+            <h2> <i class="fas fa-cubes"></i> Procesos de formación activos <?php echo count($metacourses); ?></h2>
+        </div>
 
-							</div>
+        <div class="cards-container row py-5">
+            <?php foreach ($metacourses as $metacourse): ?>
+                <?php if ($metacourse->category == 29): ?>
+                    <?php 
+                        $modlink3 = new moodle_url('/course/view.php', array('id' => $metacourse->id));
+                    ?>
+                    <!-- METACURSO -->
+                    <div class="card col-3 border mx-2 p-4">
+                        <h4 class="mt-0 metacurso"> 
+                            <a href="<?php echo $modlink3 ?>" style="display:block; width:100%; height:100%; font-size:1.25rem">
+                                <i class="fas fa-folder d-inline-block mr-1"></i>  <?php echo $metacourse->fullname ?>
+                            </a>
+                        </h4>
+                        <a href="<?php echo $modlink3 ?>"> Abrir</a>
+                    </div>
+                    <!-- FIN METACURSO -->
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <!-- FIN SECCIÓN METACURSOS -->
+<?php endif; ?>
+
 
 							<!-- FIN SECCIÓN METACURSOS -->
 
