@@ -416,7 +416,7 @@ foreach ($metacourses as $metacourse) {
     <!-- SECCIÓN METACURSOS -->
     <div class="seccion-metacursos">
         <div class="header-acceso mt-4 border-bottom pt-5 pl-4 pb-4" style="background-image:url(https://img.playbook.com/QKPmHUmuFWOZP3BNwdTVlp8BF5DsBt1yWJuCzLKdsp0/Z3M6Ly9wbGF5Ym9v/ay1hc3NldHMtcHVi/bGljLzMyYThlY2Nj/LWY4NzQtNDE5ZS1h/YTkxLTYzNWExODdi/NGNmYw);background-size:cover;border-radius:0.4rem 0.4rem 0 0; margin-left:-0.80rem">
-            <h2> <i class="fas fa-cubes"></i> Procesos de formación activos <?php echo count($metacourses); ?></h2>
+            <h2> <i class="fas fa-cubes"></i> Procesos de formación activos</h2>
         </div>
 
         <div class="cards-container row py-5">
