@@ -446,37 +446,52 @@ foreach ($metacourses as $metacourse) {
 							<!-- FIN SECCIÓN METACURSOS -->
 
 
-							<!-- SECCIÓN AULAS HISTÓRICAS -->
+<!-- SECCIÓN AULAS HISTÓRICAS -->
 
-						<div class="seccion-aulas">
-						    <div class="header-acceso mt-4 border-bottom pt-5 pl-4 pb-4" style="background-image:url(https://img.playbook.com/2GWxFcRUx6v8AIwNR6E6L69kCwjLPScmRC_YE39LETg/Z3M6Ly9wbGF5Ym9v/ay1hc3NldHMtcHVi/bGljL2U0OTNkMmJh/LWM1ODMtNGVjNy05/Y2Q5LWMyMjdmNjEz/YTBkOA">
-						        <h2> <i class="fas fa-history"></i> Aulas históricas </h2>
-						    </div>
-						    
-						    <div class="cards-container row py-5 justify-content-start align-items-start">
-						        <?php 
-						        $archives = enrol_get_my_courses('enddate');//get_courses(); //enrol_get_my_courses();
-						        //$current_time = time(); // Obtener el tiempo actual
+<?php
+$archives = enrol_get_my_courses('enddate'); // Obtener todos los cursos archivados
+$current_time = time(); // Obtener el tiempo actual
 
-						        foreach($archives as $archived): 
+// Variable para rastrear si hay aulas históricas válidas
+$has_archived_courses = false;
 
-						            if($archived->enddate < $current_time && $archived->category != 29): 
-						                $formatted_course_date = date('d-m-Y', $archived->enddate);
-						                $modlink4 = new moodle_url('/course/view.php', array('id' => $archived->id));
-						        ?>
-						                <div class="card col-4 border mx-2 p-4">
-						                    <h4 class="mt-0 metacurso" style="font-size:1.25rem"> <i class="fas fa-archive d-inline-block mr-1"></i>  <?php echo $archived->fullname; ?></h4>
-						                    <a href="<?php echo $modlink4; ?>"> Ir al curso </a>
-						                    <p>Fecha de finalización: <?php echo $formatted_course_date; ?></p>
-						                </div>
-						        <?php 
-						            endif;
-						        endforeach; 
-						        ?>
-						    </div>
-						</div>
+// Recorrer todos los cursos archivados para verificar si alguno cumple con la condición
+foreach ($archives as $archived) {
+    if ($archived->enddate < $current_time && $archived->category != 29) {
+        $has_archived_courses = true;
+        break;
+    }
+}
+?>
 
-							<!-- FIN SECCIÓN AULAS HISTÓRICAS -->
+<?php if ($has_archived_courses): ?>
+    <div class="seccion-aulas">
+        <div class="header-acceso mt-4 border-bottom pt-5 pl-4 pb-4" style="background-image:url('https://img.playbook.com/2GWxFcRUx6v8AIwNR6E6L69kCwjLPScmRC_YE39LETg/Z3M6Ly9wbGF5Ym9v/ay1hc3NldHMtcHVi/bGljL2U0OTNkMmJh/LWM1ODMtNGVjNy05/Y2Q5LWMyMjdmNjEz/YTBkOA');background-size:cover;border-radius:0.4rem 0.4rem 0 0; margin-left:-0.80rem">
+            <h2> <i class="fas fa-history"></i> Aulas históricas </h2>
+        </div>
+        
+        <div class="cards-container row py-5 justify-content-start align-items-start">
+            <?php 
+            foreach($archives as $archived): 
+                if($archived->enddate < $current_time && $archived->category != 29): 
+                    $formatted_course_date = date('d-m-Y', $archived->enddate);
+                    $modlink4 = new moodle_url('/course/view.php', array('id' => $archived->id));
+            ?>
+                    <div class="card col-4 border mx-2 p-4">
+                        <h4 class="mt-0 metacurso" style="font-size:1.25rem"> <i class="fas fa-archive d-inline-block mr-1"></i>  <?php echo $archived->fullname; ?></h4>
+                        <a href="<?php echo $modlink4; ?>"> Ir al curso </a>
+                        <p>Fecha de finalización: <?php echo $formatted_course_date; ?></p>
+                    </div>
+            <?php 
+                endif;
+            endforeach; 
+            ?>
+        </div>
+    </div>
+<?php endif; ?>
+
+<!-- FIN SECCIÓN AULAS HISTÓRICAS -->
+
 
 
 
