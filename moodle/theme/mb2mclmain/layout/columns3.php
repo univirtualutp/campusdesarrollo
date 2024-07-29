@@ -161,7 +161,7 @@ elseif ($sidePre || $sidePost)
 								<h2> <i class="fas fa-rocket"></i> Aulas de Acceso Rápido </h2>
 							</div>	
 									<!-- CARDS CONTAINER -->
-							<div class="cardlists-container row py-5" style="row-gap: 1rem;">
+							<div class="cardlists-container justify-content-start row py-5" style="row-gap: 1rem;">
 
 									<?php  // Nuevo front ?>
 								
@@ -419,7 +419,7 @@ foreach ($metacourses as $metacourse) {
             <h2> <i class="fas fa-cubes"></i> Procesos de formación activos</h2>
         </div>
 
-        <div class="cards-container row py-5">
+        <div class="cards-container justify-content-start row py-5">
             <?php foreach ($metacourses as $metacourse): ?>
                 <?php if ($metacourse->category == 29): ?>
                     <?php 
