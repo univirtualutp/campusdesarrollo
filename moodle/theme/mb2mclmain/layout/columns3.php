@@ -161,7 +161,7 @@ elseif ($sidePre || $sidePost)
 								<h2> <i class="fas fa-rocket"></i> Aulas de Acceso Rápido </h2>
 							</div>	
 									<!-- CARDS CONTAINER -->
-							<div class="cardlists-container justify-content-start row py-5" style="row-gap: 1rem;">
+							<div class="cardlists-container justify-content-center justify-content-md-start row py-5" style="row-gap: 1rem;">
 
 									<?php  // Nuevo front ?>
 								
@@ -232,7 +232,7 @@ elseif ($sidePre || $sidePost)
 									$current_time = time();
 									if($mycourse->category != 29 && $mycourse->enddate > $current_time ) :?>
 									
-									<div class="card col-3 border mx-2 p-3">
+									<div class="card col-11 col-md-3 border mx-2 p-3">
 										<h4 class="my-0 " style="font-size:1.25rem;"> <i class="fas fa-chalkboard" style="color:#00B4DD; display:inline-block; margin-right:4px"></i> <?php print_r($mycourse->fullname); ?> </h4>
 
 												<?php 
@@ -268,24 +268,39 @@ elseif ($sidePre || $sidePost)
         // Filtro que no se muestre las que son tipo label
         if ($activity->mod !== 'label'):
             // Verificar y mostrar las fechas si están presentes
-            $timestamp = null;
-            $date_label = '';
+			$timestamp = null;
+            $date_label = '';            
 
-            if (isset($activity->customdata['cutoffdate']) && $activity->customdata['cutoffdate'] >= $current_time) {
+            if (isset($activity->customdata['cutoffdate'])) {
                 $timestamp = $activity->customdata['cutoffdate'];
                 $date_label = 'Fecha límite: ';
-            } elseif (isset($activity->customdata['duedate']) && $activity->customdata['duedate'] >= $current_time) {
+            } elseif (isset($activity->customdata['duedate'])) {
                 $timestamp = $activity->customdata['duedate'];
                 $date_label = 'Fecha de entrega: ';
-            } elseif (isset($activity->customdata['allowsubmissionsfromdate']) && $activity->customdata['allowsubmissionsfromdate'] >= $current_time) {
+            } elseif (isset($activity->customdata['timeclose'])) {
+                $timestamp = $activity->customdata['timeclose'];
+                $date_label = 'Fecha de cierre: ';
+            } elseif (isset($activity->customdata['allowsubmissionsfromdate'])) {
                 $timestamp = $activity->customdata['allowsubmissionsfromdate'];
                 $date_label = 'Fecha de inicio de entregas: ';
-            } elseif (isset($activity->customdata['deadline']) && $activity->customdata['deadline'] >= $current_time) {
+            } elseif (isset($activity->customdata['deadline'])) {
                 $timestamp = $activity->customdata['deadline'];
                 $date_label = 'Fecha límite: ';
             }
 
-            if ($timestamp !== null):
+            // Verificar la fecha en availability
+            $availability_timestamp = null;
+            if (isset($activity->availability)) {
+                $availability_data = json_decode($activity->availability, true);
+                if ($availability_data !== null && isset($availability_data['c'][0]['t'])) {
+                    $availability_timestamp = $availability_data['c'][0]['t'];
+                }
+            } elseif (isset($activity->customdata['timeopen'])) {
+                $availability_timestamp = $activity->customdata['timeopen'];
+            }
+
+            // Comprobar que la actividad esté dentro del rango de fechas: current_time >= availability y current_time <= fecha límite
+            if ($timestamp !== null && ($availability_timestamp === null || $current_time >= $availability_timestamp) && $current_time <= $timestamp):
                 $activities_found = true; // Marcar que se ha encontrado al menos una actividad válida
                 $formatted_date = date('d-m-Y', $timestamp);
                 $modlink2 = new moodle_url('/mod/' . $activity->mod . '/view.php', array('id' => $activity->cm));
@@ -325,7 +340,7 @@ elseif ($sidePre || $sidePost)
     <?php 
     if ($activities_found && count($additional_activities) > 0): ?>
         <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#additionalActivities" aria-expanded="false" aria-controls="additionalActivities">
-        Ver más actividades
+            Ver más actividades
         </button>
         <div class="collapse" id="additionalActivities">
             <?php foreach ($additional_activities as $activity): ?>
@@ -419,14 +434,14 @@ foreach ($metacourses as $metacourse) {
             <h2> <i class="fas fa-cubes"></i> Procesos de formación activos</h2>
         </div>
 
-        <div class="cards-container justify-content-start row py-5">
+        <div class="cards-container justify-content-center justify-content-md-start row py-5">
             <?php foreach ($metacourses as $metacourse): ?>
                 <?php if ($metacourse->category == 29): ?>
                     <?php 
                         $modlink3 = new moodle_url('/course/view.php', array('id' => $metacourse->id));
                     ?>
                     <!-- METACURSO -->
-                    <div class="card col-3 border mx-2 p-4">
+                    <div class="card col-11 col-md-3 border mx-2 p-4">
                         <h4 class="mt-0 metacurso"> 
                             <a href="<?php echo $modlink3 ?>" style="display:block; width:100%; height:100%; font-size:1.25rem">
                                 <i class="fas fa-folder d-inline-block mr-1"></i>  <?php echo $metacourse->fullname ?>
@@ -467,7 +482,7 @@ $has_archived_courses = !empty($filtered_archives);
             <h2> <i class="fas fa-history"></i> Aulas históricas </h2>
         </div>
         
-        <div class="cards-container row py-5 justify-content-start align-items-start">
+        <div class="cards-container row py-5 justify-content-center justify-content-md-start align-items-start">
             <?php 
             $course_count = 0;
             foreach($filtered_archives as $archived):
@@ -476,7 +491,7 @@ $has_archived_courses = !empty($filtered_archives);
                 
                 if ($course_count < 3): 
             ?>
-                    <div class="card col-3 border mx-2 p-3">
+                    <div class="card col-11 col-md-3 border mx-2 p-3">
                         <h4 class="mt-0 metacurso" style="font-size:1.25rem"> <i class="fas fa-archive d-inline-block mr-1"></i>  <?php echo $archived->fullname; ?></h4>
                         <a href="<?php echo $modlink4; ?>"> Ir al curso </a>
                         <p style="font-size:0.8rem">Fecha de finalización: <?php echo $formatted_course_date; ?></p>
@@ -484,7 +499,7 @@ $has_archived_courses = !empty($filtered_archives);
             <?php 
                 else: 
             ?>
-                    <div class="card col-3 border mx-2 p-3 collapse" id="additionalCourses">
+                    <div class="card col-11 col-md-3 border mx-2 p-3 collapse" id="additionalCourses">
                         <h4 class="mt-0 metacurso" style="font-size:1.25rem"> <i class="fas fa-archive d-inline-block mr-1"></i>  <?php echo $archived->fullname; ?></h4>
                         <a href="<?php echo $modlink4; ?>"> Ir al curso </a>
                         <p style="font-size:0.8rem">Fecha de finalización: <?php echo $formatted_course_date; ?></p>
