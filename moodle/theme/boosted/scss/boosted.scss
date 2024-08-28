@@ -1,0 +1,1110 @@
+/**
+ * Boosted SCSS file
+ *
+ * @package   theme_boosted
+ * @copyright 2022-2023 koditik.com
+ *
+ *
+ */
+
+/************************
+ * Content
+ *
+ * 0. Functions
+ * 1. Fonts
+ * 2. Colors
+ * 3. Layout
+ * 4. Accessibility
+ * 5. Forms
+ * 5.1 Settings page forms
+ * 6. Front Page
+ * 7. Course Page
+ *************************/
+
+/*************************
+0. Functions
+**************************/
+
+@function set-color($fcolor) {
+    @if (lightness($fcolor) > 60) {
+        @return $body-color;
+    } @else {
+        @return $white;
+    }
+}
+
+@function set-color-primary($fcolor) {
+    @if (lightness($fcolor) > 60) {
+        @return $primary;
+    } @else {
+        @return $white;
+    }
+}
+
+/* ************************
+1. Fonts
+************************* */
+
+/* Body styles */
+body {
+    font-size: $fontsize;
+}
+
+/* Headings style */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    letter-spacing: 0;
+    font-style: normal;
+}
+
+.form-setting .form-description {
+    font-style: italic;
+}
+
+.form-label label,
+.form-label p {
+    font-weight: bold !important;
+    font-size: 1.1rem !important;
+}
+
+.dndupload-arrow i {
+    color: $primary;
+}
+
+.dndupload-arrow .fa.fa-arrow-circle-o-down:before,
+.dndupload-arrow .fa-arrow-circle-o-down:before {
+    content: "\f01a" !important;
+}
+
+.btn {
+    font-size: 1.2rem;
+}
+
+/*************************
+2. Colors
+**************************/
+
+/* Main colors */
+html,
+body {
+    background-color: $pagebgcolor !important;
+    color: $body-color !important;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: $fontheadercolor;
+}
+
+#page.drawers .main-inner,
+#topofscroll.main-inner {
+    background-color: $bgcolor !important;
+    color: $body-color !important;
+}
+
+.card-body,
+.card-footer {
+    background-color: $bgcolor !important;
+    color: $body-color !important;
+}
+
+.setting-headings {
+    display: block;
+    padding: 0;
+    margin-bottom: 0 !important;
+    margin-left: 1rem;
+    line-height: 1.2 !important;
+    border: none !important;
+    color: $fontheadercolor !important;
+}
+
+#adminsettings .setting-headings h3 {
+    color: $fontheadercolor !important;
+    margin-bottom: 0 !important;
+    border-bottom: none !important;
+    font-size: 1.75rem;
+    line-height: normal;
+}
+
+/* Navigation menu */
+.navbar {
+    background-color: $headerbgcolor !important;
+    color: $headertextcolor !important;
+}
+
+.navbar-toggler,
+.navbar-toggler-icon {
+    background-image: none !important;
+    filter: none !important;
+}
+
+.navbar-toggler-icon::before {
+    font-family: "FontAwesome" !important;
+    font-size: 1.5rem;
+    content: "\f0c9";
+    color: $headertextcolor !important;
+}
+
+.moremenu .nav-link {
+    border-top: solid 4px transparent;
+    border-bottom: solid 4px transparent;
+    border-left: none;
+}
+
+.moremenu .nav-tabs .nav-link {
+    border: 0 solid transparent;
+}
+
+/* Main menu (primary-navigation) */
+.moremenu .nav-link.active,
+.moremenu .nav-link:hover,
+.moremenu .nav-link:focus {
+    border-top: 4px solid transparent !important;
+    border-bottom: 4px solid $headertextcolor !important;
+    background-color: transparent !important;
+    color: $headertextcolor !important;
+    box-shadow: none;
+    transition: border-bottom 0.3s ease-out;
+}
+
+.primary-navigation .navigation .nav-link {
+    height: 60px;
+    color: $headertextcolor !important;
+}
+
+/* Secondary Menu */
+.secondary-navigation .moremenu .nav-link.active,
+.secondary-navigation .moremenu .nav-link:hover,
+.secondary-navigation .moremenu .nav-link:focus {
+    border-top: 4px solid transparent !important;
+    border-right: 0 solid !important;
+    border-left: 0 solid !important;
+    border-bottom: 4px solid $primary !important;
+    background-color: transparent !important;
+    color: $primary !important;
+    box-shadow: none;
+    transition: border-bottom 0.3s ease-out;
+}
+
+.secondary-navigation .navigation {
+    border-top: none;
+    border-bottom: none;
+}
+
+/* Navigation bar */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.navbar-brand,
+.navbar-brand:hover {
+    color: $white;
+}
+
+.navbar,
+.navbar-nav .nav-link,
+.navbar-nav h1 {
+    background-color: $headerbgcolor !important;
+    color: $headertextcolor !important;
+}
+
+.dropdown-toggle::after,
+.dropdown-toggle a {
+    color: $gray-600 !important;
+}
+
+.dropdown-toggle::after:hover,
+.dropdown-toggle a:hover {
+    color: inherited !important;
+}
+
+.navbar-toggler-icon {
+    filter: brightness(0) invert(1);
+}
+
+.popover-region a,
+.popover-region i {
+    color: $headertextcolor !important;
+}
+
+.usermenu .login a {
+    color: $headertextcolor !important;
+}
+
+/* Tabs */
+.nav-tabs .nav-link {
+    border: 1px solid transparent;
+    border-top-left-radius: $border-radius;
+    border-top-right-radius: $border-radius;
+}
+
+.nav-tabs .nav-link.active,
+.nav-tabs .nav-link:hover,
+.nav-tabs .nav-item.show .nav-link {
+    background-color: $gray-200;
+    border-color: $gray-400 $gray-400 $white;
+    box-shadow: none;
+}
+
+.nav-tabs .nav-link:focus {
+    outline: none;
+}
+
+#fitem_id_passwordpolicyinfo .form-control-static,
+.form-filetypes-descriptions {
+    background-color: $info;
+    color: set-color($info);
+    padding: 5px;
+    border-radius: $border-radius-xs;
+}
+
+.description .-description-item {
+    color: $blue;
+    background-color: $cyan;
+    padding: 5px;
+    border-radius: $border-radius-xs;
+}
+
+.generaltable {
+    color: $fontmaincolor !important;
+}
+
+.badge-light {
+    background-color: $gray-500 !important;
+    color: $white !important;
+}
+
+.badge-primary.course-category a {
+    color: $white;
+}
+
+.drawertoggle {
+    color: $red !important;
+    border: 2px solid $red !important;
+}
+
+#region-main-box {
+    background-color: $bgcolor;
+    overflow: hidden;
+}
+
+#region-main {
+    background-color: $bgcolor;
+    overflow: hidden;
+    padding-bottom: 2rem;
+}
+
+.usermenu a,
+span #lang-menu-toggle {
+    color: $headertextcolor !important;
+}
+
+a.dropdown-item {
+    color: $primary !important;
+}
+
+a.dropdown-item:hover {
+    color: $white !important;
+}
+
+.drawer-toggles .drawer-right-toggle .btn.icon-no-margin,
+.drawer-toggles .drawer-left-toggle .btn.icon-no-margin {
+    background-color: $primary;
+    color: $white;
+    border: 1px solid $white;
+}
+
+#page-admin-index.format-site .page h1 {
+    color: set-color($pagebgcolor) !important;
+}
+
+/* Expand / Collapse button */
+.expandall,
+.collapseall {
+    background-color: $primary;
+    color: set-color($primary);
+    text-align: center;
+    vertical-align: middle;
+    user-select: none;
+    border: 1px solid transparent;
+    padding: 0.5rem;
+    font-size: 1.2rem;
+    line-height: 1.5;
+    border-radius: $border-radius;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+        border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.expandall a,
+.collapseall a {
+    color: set-color($primary);
+}
+
+/* Course Index */
+.courseindex .courseindex-item:hover,
+.courseindex .courseindex-item:hover .courseindex-link,
+.courseindex .courseindex-item:hover .courseindex-chevron {
+    color: set-color($primary) !important;
+    background-color: $primary !important;
+    cursor: pointer;
+}
+
+.path-mod .automatic-completion-conditions .badge.badge-light {
+    color: $white !important;
+    background-color: $info !important;
+}
+
+/* Footer */
+#page-footer,
+#page-footer h3,
+#page-footer a {
+    background-color: $footerbgcolor !important;
+    color: $footertextcolor !important;
+}
+
+/* Alerts */
+.alert-info {
+    background-color: $info;
+    color: set-color($info);
+}
+
+.alert-warning {
+    background-color: $warning;
+    color: set-color($warning);
+}
+
+.alert-success {
+    background-color: $success;
+    color: set-color($success);
+}
+
+.alert-danger {
+    background-color: $danger;
+    color: set-color($danger);
+}
+
+.alert-block {
+    margin: 1rem;
+}
+
+.highlight {
+    color: set-color-primary($info);
+}
+
+/* Calendar */
+.maincalendar .calendarmonth td,
+.maincalendar .calendarmonth th {
+    border: 1px solid $gray-400;
+}
+
+.maincalendar .calendarmonth td .day-number-circle .day-number {
+    padding: 0;
+}
+
+.maincalendar .calendarmonth td .day-number-circle {
+    line-height: normal;
+}
+
+.text-info {
+    color: $blue !important;
+}
+
+
+/*************************
+3. Layout
+**************************/
+
+/* Adding xxl class to BS4 */
+@media (min-width: 1601px) {
+    .col-xxl-3 {
+        flex: 0 0 25%;
+        max-width: 25%;
+        position: relative;
+        width: 100%;
+        padding-right: 15px;
+        padding-left: 15px;
+    }
+}
+
+/* Content height */
+#page-wrapper {
+    height: 100vh;
+    flex-direction: inherit;
+    justify-content: center;
+}
+
+
+/* Content width */
+@media (min-width: 1024px) {
+    .pagelayout-standard #page.drawers .main-inner,
+    body.limitedwidth #page.drawers .main-inner,
+    #page.drawers .main-inner,
+    #page.drawers .footer-popover,
+    #page-footer {
+        max-width: $contentwidth !important;
+        width: $contentwidth !important;
+        margin: 0 auto;
+    }
+}
+
+/* Page layout in desktop screens for 4.3 */
+@media (min-width: 576px) {
+    #page-wrapper {
+        display: block;
+    }
+
+    #page-wrapper #page {
+        height: inherit;
+    }
+}
+
+@media (min-width: 768px) {
+    .secondary-navigation {
+        padding: 0 !important;
+    }
+}
+
+.secondary-navigation .navigation {
+    margin: 0;
+}
+
+/* Remove Y-Margins */
+#page.drawers .main-inner {
+    border-radius: 0;
+    padding: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+/* Expand lesson title to more one line and remove ellipsis */
+#page-enrol-index.enableenrollayout
+    .enroloptions
+    .box.py-3.generalbox
+    form
+    .activity-navigation
+    input[type="submit"]:not(.btn),
+.activity-navigation
+    #page-enrol-index.enableenrollayout
+    .enroloptions
+    .box.py-3.generalbox
+    form
+    input[type="submit"]:not(.btn),
+.activity-navigation .btn,
+.activity-navigation
+    div[id$="-reactive-debugpanel"]
+    span[data-for="loaders"]
+    button,
+.text-truncate,
+div[id$="-reactive-debugpanel"]
+    span[data-for="loaders"]
+    .activity-navigation
+    button {
+    overflow: hidden;
+    white-space: normal;
+    text-overflow: ellipsis;
+}
+
+/* Footer Social Icons */
+.socialbox {
+    display: inline-block;
+    margin-top: 1rem 0;
+    vertical-align: middle;
+}
+
+.socialbox a:focus i {
+    outline-color: transparent;
+}
+
+.socialbox a i {
+    font-family: "FontAwesome" !important;
+    color: $white !important;
+    line-height: 1.5;
+}
+
+.continuebutton {
+    margin-bottom: 1rem;
+}
+
+/* Breadcrumb */
+@media (max-width: 767.98px) {
+    .breadcrumb:not(:empty) .breadcrumb-item {
+        flex-grow: 0;
+    }
+}
+
+/* Report Builder */
+#page-admin-reportbuilder-edit #region-main {
+    height: 100%;
+}
+
+.reportbuilder-wrapper {
+    margin-top: 20px;
+}
+
+.reportbuilder-table th span[data-drag-type="move"] .icon {
+    font-size: 1rem;
+}
+
+.reportbuilder-table th button[data-action="report-remove-column"] .icon {
+    font-size: 1.2rem;
+    color: $red;
+}
+
+/*************************
+4. Accessibility
+**************************/
+
+/* Text Selection */
+::selection {
+    color: $selectiontext;
+    background-color: $selectionbg;
+}
+
+/* Focus effect */
+a:focus,
+select:focus,
+textarea:focus,
+input:focus {
+    outline: $focusborder solid 3px !important;
+}
+
+a#collapsesections {
+    font-weight: 400;
+    color: $white;
+    text-align: center;
+    vertical-align: middle;
+    user-select: none;
+    background-color: $primary;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: $border-radius;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+        border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    border: 2px solid $primary;
+    text-decoration: none;
+}
+
+.aalink.focus,
+a.focus.autolink,
+.aalink:focus,
+a.autolink:focus,
+#page-footer a:not([class]).focus,
+#page-footer a:not([class]):focus,
+.arrow_link.focus,
+.arrow_link:focus,
+a:not([class]).focus,
+a:not([class]):focus,
+.activityinstance > a.focus,
+.activityinstance > a:focus {
+    background-color: transparent !important;
+    box-shadow: none;
+}
+
+.userinitials {
+    font-size: 1rem;
+}
+
+.form-autocomplete-selection [data-active-selection=true] {
+    box-shadow: 0 0 0 0;
+}
+
+/*************************
+5. Forms
+**************************/
+
+/* Radio */
+input[type="radio"] {
+    margin: 0;
+    cursor: pointer;
+    appearance: none;
+    background-color: $white;
+    color: $gray-800;
+    width: 1.2rem !important;
+    height: 1.2rem !important;
+    border: 2px solid $gray-800;
+    border-radius: 50%;
+    transition-property: background-color;
+    transition-duration: 0.3s;
+}
+
+input[type="radio"]:checked {
+    transform: scale(1);
+    background-color: #33ac65;
+}
+
+input[type="radio"]:checked {
+    background-image: radial-gradient(
+        #33ac65 40%,
+        transparent calc(40% + 1px)
+    ) !important;
+}
+
+/* Checkbox */
+input[type="checkbox"] {
+    cursor: pointer;
+    appearance: none;
+    transform: scale(1.2);
+    background-color: $gray-300;
+    border: 1px solid $gray-400;
+    padding: 0.5rem;
+    margin-right: 0.5rem;
+    border-radius: $border-radius-xs;
+    display: inline-block;
+    transition-property: background-color;
+    transition-duration: 0.5s;
+}
+
+input[type="checkbox"]:checked {
+    background-color: $green;
+}
+
+input[type="checkbox"]:checked:after {
+    font-family: "FontAwesome" !important;
+    content: "\2714";
+    font-size: 0.9rem;
+    position: absolute;
+    top: -3px;
+    left: 2px;
+    color: $white;
+}
+
+input[type="checkbox"] + label {
+    margin-left: 1.5rem;
+}
+
+.fa-check.text-success {
+    color: $green !important;
+}
+
+.custom-control {
+    margin-left: 0.5rem;
+}
+
+.form-check {
+    position: relative;
+    display: block;
+    padding-left: 0;
+}
+
+.form-check-input {
+    margin-top: 0.2rem;
+    margin-left: 0;
+}
+
+.form-check-inline span,
+span.text {
+    margin-left: 0.25rem;
+}
+
+.form-defaultinfo {
+    margin-top: 0.5rem !important;
+    font-size: $fontsize !important;
+}
+
+/* Filepicker */
+.filepicker-filelist .filepicker-container,
+.filemanager.fm-noitems .fm-empty-container {
+    border: 2px dashed $primary;
+}
+
+.fp-navbar {
+    border: 1px solid $gray-400;
+    background-color: $gray-200;
+}
+
+.fp-viewbar {
+    color: $black !important;
+}
+
+.search-box__input {
+    border: 1px solid $gray-400 !important;
+    border-radius: $border-radius-xs 0 0 $border-radius-xs;
+}
+
+/* Form elements background */
+.tox-tinymce,
+textarea,
+textarea[cols],
+.form-inline input.form-control[type="text"],
+.form-control,
+input.form-control[type="text"],
+.filepicker-filelist,
+.filemanager-container,
+.custom-select {
+    background-color: $gray-200 !important;
+    color: $gray-800 !important;
+    border: 1px solid $gray-500 !important;
+    border-radius: $border-radius-xs !important;
+}
+
+/* Fix forms width */
+.tox-tinymce,
+textarea[cols],
+textarea,
+textarea[cols],
+.filemanager,
+.filemanager-container,
+.filemanager-toolbar,
+.form-filemanager,
+.editor_atto_wrap,
+.mceEditor {
+    max-width: 652px !important;
+}
+
+/* Editors */
+.tox .tox-statusbar,
+.tox:not(.tox-tinymce-inline) .tox-editor-header,
+.tox .tox-menubar,
+.tox .tox-toolbar,
+.tox .tox-toolbar-overlord,
+.tox .tox-toolbar__overflow,
+.tox .tox-toolbar__primary {
+    background-color: $gray-200 !important;
+    color: $gray-800 !important;
+}
+
+.editor_atto_wrap,
+.mceEditor {
+    display: inline-block;
+}
+
+.form-item {
+    border-bottom: 2px solid $gray-400;
+    margin-bottom: 1rem;
+}
+
+/* Remove some messages in forms */
+#id_overviewfiles_filemanager_fieldset p,
+#id_file_fieldset p {
+    display: none;
+}
+
+.form-filemanager {
+    margin-bottom: 0.5rem;
+}
+
+.simplesearchform .form-control,
+.simplesearchform .btn {
+    width: auto;
+    height: 47px !important;
+}
+
+.simplesearchform .btn .icon {
+    display: flex;
+    margin: 0 auto !important;
+    padding: 0 !important;
+}
+
+input[type="text"]:focus {
+    background-color: lightblue;
+}
+
+.icon {
+    font-size: 1.2rem;
+    height: 1rem !important;
+    width: 1rem !important;
+}
+
+/*************************
+5.1 Settings forms
+**************************/
+
+.form-setting .form-description {
+    max-width: 652px !important;
+    font-style: italic;
+}
+
+.form-setting .form-description:not(:empty) {
+    background-color: $info;
+    color: set-color($info);
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 28px;
+    top: 1rem;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+    display: none;
+}
+
+/* The slider */
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 1px solid $gray-300;
+    background-color: $gray-200;
+    transition: 0.4s;
+}
+
+.slider:before {
+    border: 1px solid $gray-300;
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 3px;
+    background-color: $white;
+    transition: 0.4s;
+}
+
+input.success:checked + .slider {
+    background-color: $green;
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px $primary;
+}
+
+input:checked + .slider:before {
+    transform: translateX(32px);
+}
+
+.slider.round {
+    border-radius: 20px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+.form-filetypes-descriptions,
+.fdescription.form-filetypes-descriptions {
+    background-color: transparent !important;
+    color: $body-color !important;
+}
+
+.box.generalbox pre {
+    background-color: $success;
+    color: set-color($success);
+    font-size: 1rem;
+    font-weight: normal;
+    padding: 1rem;
+    border-radius: $border-radius-lg;
+    width: 80%;
+}
+
+.boostedbanner {
+    text-align:center;
+    font-size: 1.5rem;
+    font-weight: bolder;
+    background-color: $purple;
+    color: $white;
+    border-radius: $border-radius-lg;
+    padding: 2rem 1rem;
+    margin: 5rem 0;
+}
+
+/*************************
+6. Front Page
+**************************/
+
+/* Front Page Banner */
+#top-banner {
+    width: 100%;
+    min-height: 400px;
+    max-height: 800px;
+}
+
+#top-banner h1 {
+    color: $white;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 4px rgba(81, 67, 21, 0.8);
+}
+
+@media (min-width: 768px) {
+    #page.drawers {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+}
+
+/* Info blocks */
+@media (min-width: 768px) {
+    section#info-blocks,
+    #frontpage-available--list {
+        margin-top: 2rem !important;
+    }
+}
+
+/* Front Page Course cards */
+.courses-list .card-img,
+.card-img-top,
+.card-img-bottom {
+    flex-shrink: 0;
+    width: 100%;
+    height: 260px;
+}
+
+.courses-list .card {
+    height: 12vw;
+    object-fit: cover;
+    width: 100%;
+    border: 3px solid transparent;
+}
+
+.courses-list .card:hover {
+    border: 3px solid $primary;
+}
+
+.courses-list .card .card-body {
+    padding: 0.5rem 1.25rem;
+}
+
+/* Course card title */
+.courses-list .card .card-title {
+    height: 3.5rem;
+    font-size: 1.4rem !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Course card summary */
+.courses-list .card-text.course-summary {
+    height: 4.5rem;
+    font-size: 1rem !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.courses-list .card-text.course-summary p:after {
+    background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0),
+        rgba(255, 255, 255, 1) 50%
+    );
+    content: "";
+    text-align: right;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 70%;
+    height: 1rem;
+}
+
+.courses-list .card-text.course-category a {
+    margin-top: 1rem;
+}
+
+.course-category a,
+.categoryname {
+    text-align: left !important;
+    float: left;
+    margin: 0.5rem;
+    z-index: 100;
+}
+
+.enrolmenticons .icon {
+    font-size: 1rem;
+}
+
+.truncate-text {
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    white-space: nowrap;
+}
+
+/* Remove "All Courses" button from frontpage */
+.paging.paging-morelink .coursesmorelink {
+    display: none;
+}
+
+/* Tiles - Course title */
+h3.card-title.course-title {
+    font-size: 1.2rem;
+}
+
+.courses-list .card .card-title {
+    margin-bottom: 0.75rem;
+}
+
+/* Remove activity type in course page */
+.activitytitle .text-uppercase.small {
+    display: none;
+}
+
+/* Remove Next label in activity page */
+#prev-activity .nav-guide,
+#next-activity .nav-guide {
+    display: none;
+}
+
+/* Backup options icon */
+.form-control-static .icon,
+.detail-pair-value .icon {
+    font-size: 1.2rem;
+}
+
+a.dropdown-item {
+    color: $primary !important;
+}
+
+a.dropdown-item:hover {
+    color: $white !important;
+}
+
+// Blocks
+#block-region-side-pre .block.card {
+    border-top: 2px solid $primary;
+    border-radius: 0;
+}
+
+.drawer-primary .drawercontent {
+    z-index: 1000;
+}
+
+
+/*************************
+7. Course Page
+**************************/
+
+.activity-item .activity-completion button.btn,
+.activity-item .activity-completion a[role="button"].btn {
+    font-weight: normal;
+}
+
+/*************************
+7. Login Page
+**************************/
+
+/* Login button */
+#loginbtn {
+    padding: 1rem;
+    font-size: 1.2rem;
+    width: 100%;
+}
+
+@media (min-width: 1601px) {
+    .login-container {
+        width: 800px !important;
+    }
+}
+
