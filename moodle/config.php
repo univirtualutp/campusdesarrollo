@@ -163,7 +163,8 @@ $CFG->wwwroot   = 'https://aulaunivirtual-desarrollo.utp.edu.co';
 // - On Windows systems you might specify something like 'c:\moodledata'
 
 $CFG->dataroot  = '/data/desarrollo';
-
+// clave  para la  actualización
+$CFG->upgradekey = '123456';
 
 //=========================================================================
 // 4. DATA FILES PERMISSIONS
