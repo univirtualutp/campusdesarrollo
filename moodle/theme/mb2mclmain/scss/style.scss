@@ -13,31 +13,3 @@
 @import 'theme';
 @import 'plugins';
 @import 'shortcodes';
-
-.loginform {
-    display: flex;
-    flex-direction: row;
-}
-
-.loginleft {
-    flex: 1;
-    /* Otros estilos para el área del formulario de login */
-}
-
-.loginright {
-    width: 300px; /* Ajusta según tus necesidades */
-    padding: 20px;
-    background-color: #f9f9f9; /* Color de fondo para la columna derecha */
-    border-left: 1px solid #ddd; /* Línea de separación */
-    margin-left: 20px;
-}
-
-.loginright ul {
-    list-style-type: disc; /* Cambia el estilo de la viñeta si es necesario */
-    padding-left: 20px;
-}
-
-.loginright li {
-    margin-bottom: 10px;
-    font-size: 16px;
-}
