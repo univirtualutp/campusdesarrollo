@@ -1,15 +1,17 @@
-.custom-login-block {
+/* Estilos para el contenedor del formulario de inicio de sesión y el bloque de lista */
+.login-container {
+    display: flex;
+    align-items: flex-start;
+}
+
+.login-block {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
     background-color: #f9f9f9;
-    padding: 15px;
-    border-radius: 5px;
-    margin-top: 20px;
+    margin-right: 20px;
 }
 
-.custom-login-block h3 {
-    color: #333;
-}
-
-.custom-login-block ol {
-    list-style-type: disc;
-    padding-left: 20px;
+.login-form {
+    flex: 2;
 }

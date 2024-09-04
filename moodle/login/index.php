@@ -89,6 +89,7 @@ foreach($authsequence as $authname) {
     $authplugin->loginpage_hook();
 }
 
+
 /// Define variables used in page
 $site = get_site();
 
@@ -215,43 +216,46 @@ if ($frm and isset($frm->username)) {                             // Login WITH 
         if (!empty($CFG->nolastloggedin)) {
             // do not store last logged in user in cookie
             // auth plugins can temporarily override this from loginpage_hook()
-            // do not save $CFG->nolastloggedin in database!
-
-        } else if (empty($CFG->rememberusername)) {
-            // no permanent cookies, save cookie for session only
-            set_moodle_cookie($user->username, '', time() + 86400);
-
-        } else if (!empty($user->username)) {
-            set_moodle_cookie($user->username, '', time() + 31536000); // 1 year
-        }
-
-        // Login successful.
-        // Do not redirect if user has some "wantsurl"
-        if (empty($SESSION->wantsurl)) {
-            $urltogo = new moodle_url('/'); // Defaults to the main page.
+            // do nothing
         } else {
-            $urltogo = new moodle_url($SESSION->wantsurl);
-            unset($SESSION->wantsurl);
+            set_user_cookie($user);
         }
-        redirect($urltogo);
+
+        // Check for users that need forced password change
+        if (!empty($user->passwordchangeforced)) {
+            redirect(new moodle_url('/user/profile.php', array('id' => $user->id)));
+        }
+
+        // Customizing the homepage if defined
+        if ($CFG->defaulthomeurl) {
+            redirect($CFG->defaulthomeurl);
+        } else {
+            redirect(new moodle_url('/'));
+        }
+
     } else {
-        // invalid login
-        $errormsg = get_string("invalidlogin");
+        $errormsg = get_string('invalidlogin');
+        $errorcode = 2;
     }
+} else if ($errormsg) {
+    // Show the error message
+    $PAGE->set_title($loginsite);
+    $PAGE->set_heading($site->fullname);
+    echo $OUTPUT->header();
+    echo $OUTPUT->heading($loginsite);
+    echo $OUTPUT->box($errormsg, 'generalbox boxaligncenter');
+    echo $OUTPUT->footer();
+    die;
 }
 
-if ($user) {
-    if (isguestuser($user)) {
-        // no predefined language for guests - use existing session or default site lang
-        unset($user->lang);
-    } else if (!empty($user->lang)) {
-        // unset previous session language - use user preference instead
-        unset($SESSION->lang);
-    }
+if ($USER->id and !isguestuser()) {
+    // user already logged in - no form to display
+    // redirect to the default home page
+    redirect(new moodle_url('/'));
 }
 
-$PAGE->set_title("$site->fullname: $loginsite");
-$PAGE->set_heading("$site->fullname");
+$loginform = new \core_auth\output\login($authsequence, $frm->username);
+$loginform->set_error($errormsg);
 
 echo $OUTPUT->header();
 
@@ -263,18 +267,23 @@ if (isloggedin() and !isguestuser()) {
     echo $OUTPUT->confirm(get_string('alreadyloggedin', 'error', fullname($USER)), $logout, $continue);
     echo $OUTPUT->box_end();
 } else {
-    $loginform = new \core_auth\output\login($authsequence, $frm->username);
-    $loginform->set_error($errormsg);
-    echo $OUTPUT->render($loginform);
-
-    // Aquí agregamos el bloque con la lista ordenada
-    echo '<div style="float: right; width: 30%; padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9; margin-top: 20px;">';
+    echo '<div class="login-container">';
+    
+    // Bloque con la lista ordenada
+    echo '<div class="login-block">';
     echo '<ol>';
     echo '<li>Elemento 1</li>';
     echo '<li>Elemento 2</li>';
     echo '<li>Elemento 3</li>';
     echo '<li>Elemento 4</li>';
     echo '</ol>';
+    echo '</div>';
+    
+    // Formulario de inicio de sesión
+    echo '<div class="login-form">';
+    echo $OUTPUT->render($loginform);
+    echo '</div>';
+    
     echo '</div>';
 }
 
