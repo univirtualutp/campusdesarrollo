@@ -26,7 +26,9 @@
 
 require('../config.php');
 require_once('lib.php');
-require_once($CFG->dirroot.'/login/login_form.php'); // Añadir esta línea
+require_once($CFG->dirroot.'/login/login_form.php'); // Incluye el archivo de definición del formulario
+
+
 redirect_if_major_upgrade_required();
 
 $testsession = optional_param('testsession', 0, PARAM_INT); // test session works properly

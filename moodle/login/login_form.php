@@ -1,3 +1,7 @@
+<?php
+
+require_once($CFG->libdir . '/formslib.php');
+
 class login_form extends moodleform {
     // Definición del formulario
     public function definition() {
