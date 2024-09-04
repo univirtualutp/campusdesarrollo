@@ -26,8 +26,6 @@
 
 require('../config.php');
 require_once('lib.php');
-require_once($CFG->dirroot.'/login/login_form.php'); // Incluye el archivo de definición del formulario
-
 
 redirect_if_major_upgrade_required();
 
@@ -51,9 +49,6 @@ $context = context_system::instance();
 $PAGE->set_url("$CFG->wwwroot/login/index.php");
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('login');
-
-// Incluyendo el archivo CSS personalizado
-$PAGE->requires->css('/login/css/styles.css');
 
 /// Initialize variables
 $errormsg = '';
@@ -93,7 +88,6 @@ foreach($authsequence as $authname) {
     // The auth plugin's loginpage_hook() can eventually set $frm and/or $user.
     $authplugin->loginpage_hook();
 }
-
 
 /// Define variables used in page
 $site = get_site();
@@ -221,87 +215,67 @@ if ($frm and isset($frm->username)) {                             // Login WITH 
         if (!empty($CFG->nolastloggedin)) {
             // do not store last logged in user in cookie
             // auth plugins can temporarily override this from loginpage_hook()
-            // do not save $CFG->nolastloggedin = true in loginpage_hook()
-            $frm->username = '';
-        }
-        set_moodle_cookie($frm->username);
+            // do not save $CFG->nolastloggedin in database!
 
-        // Make sure the SESSION->wantsurl is not empty.
+        } else if (empty($CFG->rememberusername)) {
+            // no permanent cookies, save cookie for session only
+            set_moodle_cookie($user->username, '', time() + 86400);
+
+        } else if (!empty($user->username)) {
+            set_moodle_cookie($user->username, '', time() + 31536000); // 1 year
+        }
+
+        // Login successful.
+        // Do not redirect if user has some "wantsurl"
         if (empty($SESSION->wantsurl)) {
-            $urltogo = $CFG->wwwroot.'/';
+            $urltogo = new moodle_url('/'); // Defaults to the main page.
         } else {
-            // Include sesskey in urltogo, so CSRF protection is not triggered.
-            $urltogo = $SESSION->wantsurl;
-            if (strpos($urltogo, '?') === false) {
-                $urltogo .= '?';
-            } else {
-                $urltogo .= '&';
-            }
-            $urltogo .= 'sesskey='.sesskey();
+            $urltogo = new moodle_url($SESSION->wantsurl);
+            unset($SESSION->wantsurl);
         }
-        unset($SESSION->wantsurl);
-
-        // We cannot redirect to POST data.
-        if (strpos($urltogo, 'login/change_password.php') === 0) {
-            \core\session\manager::set_login_info($user);
-            $PAGE->set_title(get_string('changepassword'));
-            $PAGE->set_heading($site->fullname);
-            echo $OUTPUT->header();
-            echo $OUTPUT->footer();
-            exit;
-        }
-
         redirect($urltogo);
     } else {
-        if (empty($errorcode)) {
-            $errorcode = 2;
-        }
+        // invalid login
         $errormsg = get_string("invalidlogin");
-        $frm = false;
     }
 }
 
-/// Print the login page itself
-
-if (empty($user) && empty($frm) && $session_has_timed_out) {
-    $frm = new stdClass();
-    $frm->username = get_moodle_cookie();
-    $errormsg = get_string('sessionerroruser2', 'error');
+if ($user) {
+    if (isguestuser($user)) {
+        // no predefined language for guests - use existing session or default site lang
+        unset($user->lang);
+    } else if (!empty($user->lang)) {
+        // unset previous session language - use user preference instead
+        unset($SESSION->lang);
+    }
 }
 
-$site = get_site();
-$PAGE->set_title($loginsite);
-$PAGE->set_heading($site->fullname);
+$PAGE->set_title("$site->fullname: $loginsite");
+$PAGE->set_heading("$site->fullname");
 
 echo $OUTPUT->header();
-echo $OUTPUT->box_start('loginbox clearfix');
 
-// Si hay un mensaje de error, lo mostramos.
-if (!empty($errormsg)) {
-    echo $OUTPUT->error_text($errormsg);
+if (isloggedin() and !isguestuser()) {
+    // Prevent logging when already logged in, we do not want them to relogin by accident because sesskey would be changed
+    echo $OUTPUT->box_start();
+    $logout = new single_button(new moodle_url('/login/logout.php', array('sesskey'=>sesskey(),'loginpage'=>1)), get_string('logout'), 'post');
+    $continue = new single_button(new moodle_url('/'), get_string('cancel'), 'get');
+    echo $OUTPUT->confirm(get_string('alreadyloggedin', 'error', fullname($USER)), $logout, $continue);
+    echo $OUTPUT->box_end();
+} else {
+    $loginform = new \core_auth\output\login($authsequence, $frm->username);
+    $loginform->set_error($errormsg);
+    echo $OUTPUT->render($loginform);
+
+    // Aquí agregamos el bloque con la lista ordenada
+    echo '<div style="float: right; width: 30%; padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9; margin-top: 20px;">';
+    echo '<ol>';
+    echo '<li>Elemento 1</li>';
+    echo '<li>Elemento 2</li>';
+    echo '<li>Elemento 3</li>';
+    echo '<li>Elemento 4</li>';
+    echo '</ol>';
+    echo '</div>';
 }
-
-$loginform = new login_form(null, ['anchor' => $anchor]);
-
-if (empty($frm->username)) {
-    $frm->username = get_moodle_cookie();
-}
-
-$loginform->set_data($frm);
-$loginform->display();
-
-echo $OUTPUT->box_end();
-
-// Añadir el bloque personalizado
-echo $OUTPUT->box_start('custom-login-block');
-echo html_writer::tag('h3', 'Información importante');
-echo html_writer::start_tag('ol');
-echo html_writer::tag('li', 'Item 1');
-echo html_writer::tag('li', 'Item 2');
-echo html_writer::tag('li', 'Item 3');
-echo html_writer::tag('li', 'Item 4');
-echo html_writer::end_tag('ol');
-echo $OUTPUT->box_end();
 
 echo $OUTPUT->footer();
-
