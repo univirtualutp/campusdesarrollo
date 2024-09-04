@@ -50,9 +50,6 @@ $PAGE->set_url("$CFG->wwwroot/login/index.php");
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('login');
 
-// Incluyendo el archivo CSS personalizado
-$PAGE->requires->css('/login/css/styles.css');
-
 /// Initialize variables
 $errormsg = '';
 $errorcode = 0;
@@ -219,87 +216,167 @@ if ($frm and isset($frm->username)) {                             // Login WITH 
         if (!empty($CFG->nolastloggedin)) {
             // do not store last logged in user in cookie
             // auth plugins can temporarily override this from loginpage_hook()
-            // do not save $CFG->nolastloggedin = true in loginpage_hook()
-            $frm->username = '';
-        }
-        set_moodle_cookie($frm->username);
+            // do not save $CFG->nolastloggedin in database!
 
-        // Make sure the SESSION->wantsurl is not empty.
-        if (empty($SESSION->wantsurl)) {
-            $urltogo = $CFG->wwwroot.'/';
+        } else if (empty($CFG->rememberusername)) {
+            // no permanent cookies, delete old one if exists
+            set_moodle_cookie('');
+
         } else {
-            // Include sesskey in urltogo, so CSRF protection is not triggered.
-            $urltogo = $SESSION->wantsurl;
-            if (strpos($urltogo, '?') === false) {
-                $urltogo .= '?';
+            set_moodle_cookie($USER->username);
+        }
+
+        $urltogo = core_login_get_return_url();
+
+    /// check if user password has expired
+    /// Currently supported only for ldap-authentication module
+        $userauth = get_auth_plugin($USER->auth);
+        if (!isguestuser() and !empty($userauth->config->expiration) and $userauth->config->expiration == 1) {
+            $externalchangepassword = false;
+            if ($userauth->can_change_password()) {
+                $passwordchangeurl = $userauth->change_password_url();
+                if (!$passwordchangeurl) {
+                    $passwordchangeurl = $CFG->wwwroot.'/login/change_password.php';
+                } else {
+                    $externalchangepassword = true;
+                }
             } else {
-                $urltogo .= '&';
+                $passwordchangeurl = $CFG->wwwroot.'/login/change_password.php';
             }
-            $urltogo .= 'sesskey='.sesskey();
+            $days2expire = $userauth->password_expire($USER->username);
+            $PAGE->set_title("$site->fullname: $loginsite");
+            $PAGE->set_heading("$site->fullname");
+            if (intval($days2expire) > 0 && intval($days2expire) < intval($userauth->config->expiration_warning)) {
+                echo $OUTPUT->header();
+                echo $OUTPUT->confirm(get_string('auth_passwordwillexpire', 'auth', $days2expire), $passwordchangeurl, $urltogo);
+                echo $OUTPUT->footer();
+                exit;
+            } elseif (intval($days2expire) < 0 ) {
+                if ($externalchangepassword) {
+                    // We end the session if the change password form is external. This prevents access to the site
+                    // until the password is correctly changed.
+                    require_logout();
+                } else {
+                    // If we use the standard change password form, this user preference will be reset when the password
+                    // is changed. Until then it will prevent access to the site.
+                    set_user_preference('auth_forcepasswordchange', 1, $USER);
+                }
+                echo $OUTPUT->header();
+                echo $OUTPUT->confirm(get_string('auth_passwordisexpired', 'auth'), $passwordchangeurl, $urltogo);
+                echo $OUTPUT->footer();
+                exit;
+            }
         }
-        unset($SESSION->wantsurl);
 
-        // We cannot redirect to POST data.
-        if (strpos($urltogo, 'login/change_password.php') === 0) {
-            \core\session\manager::set_login_info($user);
-            $PAGE->set_title(get_string('changepassword'));
-            $PAGE->set_heading($site->fullname);
-            echo $OUTPUT->header();
-            echo $OUTPUT->footer();
-            exit;
-        }
+        // Discard any errors before the last redirect.
+        unset($SESSION->loginerrormsg);
 
-        redirect($urltogo);
+        // test the session actually works by redirecting to self
+        $SESSION->wantsurl = $urltogo;
+        redirect(new moodle_url(get_login_url(), array('testsession'=>$USER->id)));
+
     } else {
-        if (empty($errorcode)) {
-            $errorcode = 2;
+        if (empty($errormsg)) {
+            if ($errorcode == AUTH_LOGIN_UNAUTHORISED) {
+                $errormsg = get_string("unauthorisedlogin", "", $frm->username);
+            } else {
+                $errormsg = get_string("invalidlogin");
+                $errorcode = 3;
+            }
         }
-        $errormsg = get_string("invalidlogin");
-        $frm = false;
     }
 }
 
-/// Print the login page itself
-
-if (empty($user) && empty($frm) && $session_has_timed_out) {
-    $frm = new stdClass();
-    $frm->username = get_moodle_cookie();
-    $errormsg = get_string('sessionerroruser2', 'error');
+/// Detect problems with timedout sessions
+if ($session_has_timed_out and !data_submitted()) {
+    $errormsg = get_string('sessionerroruser', 'error');
+    $errorcode = 4;
 }
 
-$site = get_site();
-$PAGE->set_title($loginsite);
-$PAGE->set_heading($site->fullname);
+/// First, let's remember where the user was trying to get to before they got here
+
+if (empty($SESSION->wantsurl)) {
+    $SESSION->wantsurl = null;
+    $referer = get_local_referer(false);
+    if ($referer &&
+            $referer != $CFG->wwwroot &&
+            $referer != $CFG->wwwroot . '/' &&
+            $referer != $CFG->wwwroot . '/login/' &&
+            strpos($referer, $CFG->wwwroot . '/login/?') !== 0 &&
+            strpos($referer, $CFG->wwwroot . '/login/index.php') !== 0) { // There might be some extra params such as ?lang=.
+        $SESSION->wantsurl = $referer;
+    }
+}
+
+/// Redirect to alternative login URL if needed
+if (!empty($CFG->alternateloginurl)) {
+    $loginurl = new moodle_url($CFG->alternateloginurl);
+
+    $loginurlstr = $loginurl->out(false);
+
+    if (strpos($SESSION->wantsurl ?? '', $loginurlstr) === 0) {
+        // We do not want to return to alternate url.
+        $SESSION->wantsurl = null;
+    }
+
+    // If error code then add that to url.
+    if ($errorcode) {
+        $loginurl->param('errorcode', $errorcode);
+    }
+
+    redirect($loginurl->out(false));
+}
+
+/// Generate the login page with forms
+
+if (!isset($frm) or !is_object($frm)) {
+    $frm = new stdClass();
+}
+
+if (empty($frm->username) && $authsequence[0] != 'shibboleth') {  // See bug 5184
+    if (!empty($_GET["username"])) {
+        // we do not want data from _POST here
+        $frm->username = clean_param($_GET["username"], PARAM_RAW); // we do not want data from _POST here
+    } else {
+        $frm->username = get_moodle_cookie();
+    }
+
+    $frm->password = "";
+}
+
+if (!empty($SESSION->loginerrormsg)) {
+    // We had some errors before redirect, show them now.
+    $errormsg = $SESSION->loginerrormsg;
+    unset($SESSION->loginerrormsg);
+
+} else if ($testsession) {
+    // No need to redirect here.
+    unset($SESSION->loginerrormsg);
+
+} else if ($errormsg or !empty($frm->password)) {
+    // We must redirect after every password submission.
+    if ($errormsg) {
+        $SESSION->loginerrormsg = $errormsg;
+    }
+    redirect(new moodle_url('/login/index.php'));
+}
+
+$PAGE->set_title("$site->fullname: $loginsite");
+$PAGE->set_heading("$site->fullname");
 
 echo $OUTPUT->header();
-echo $OUTPUT->box_start('loginbox clearfix');
 
-// Si hay un mensaje de error, lo mostramos.
-if (!empty($errormsg)) {
-    echo $OUTPUT->error_text($errormsg);
+if (isloggedin() and !isguestuser()) {
+    // prevent logging when already logged in, we do not want them to relogin by accident because sesskey would be changed
+    echo $OUTPUT->box_start();
+    $logout = new single_button(new moodle_url('/login/logout.php', array('sesskey'=>sesskey(),'loginpage'=>1)), get_string('logout'), 'post');
+    $continue = new single_button(new moodle_url('/'), get_string('cancel'), 'get');
+    echo $OUTPUT->confirm(get_string('alreadyloggedin', 'error', fullname($USER)), $logout, $continue);
+    echo $OUTPUT->box_end();
+} else {
+    $loginform = new \core_auth\output\login($authsequence, $frm->username);
+    $loginform->set_error($errormsg);
+    echo $OUTPUT->render($loginform);
 }
-
-$loginform = new login_form(null, ['anchor' => $anchor]);
-
-if (empty($frm->username)) {
-    $frm->username = get_moodle_cookie();
-}
-
-$loginform->set_data($frm);
-$loginform->display();
-
-echo $OUTPUT->box_end();
-
-// Añadir el bloque personalizado
-echo $OUTPUT->box_start('custom-login-block');
-echo html_writer::tag('h3', 'Información importante');
-echo html_writer::start_tag('ol');
-echo html_writer::tag('li', 'Item 1');
-echo html_writer::tag('li', 'Item 2');
-echo html_writer::tag('li', 'Item 3');
-echo html_writer::tag('li', 'Item 4');
-echo html_writer::end_tag('ol');
-echo $OUTPUT->box_end();
 
 echo $OUTPUT->footer();
-

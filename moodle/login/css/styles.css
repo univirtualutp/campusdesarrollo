@@ -1,0 +1,15 @@
+.custom-login-block {
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 20px;
+}
+
+.custom-login-block h3 {
+    color: #333;
+}
+
+.custom-login-block ol {
+    list-style-type: disc;
+    padding-left: 20px;
+}
