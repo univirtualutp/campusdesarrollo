@@ -2,12 +2,14 @@
     This file is part of Moodle - http://moodle.org/
 
     Moodle is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
     Moodle is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
     along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
@@ -27,7 +29,7 @@
     * forgotpasswordurl - Forgot password url,
     * hasidentityproviders - Flag, set to true to hide identity providers,
     * hasinstructions - Flag, set to true to show instructions,
-    * identityproviders - List of identity providers,
+    * identityproviders - List of identiy providers,
     * instructions - Instructions,
     * instructionsformat - Format of instructions,
     * loginurl - Login url,
@@ -187,18 +189,7 @@
             <h2 class="login-heading h3">{{#str}}firsttime{{/str}}</h2>
             {{{instructions}}}
         </div>
-        {{/hasinstructions}}
-        
-        <!-- Aquí se añade la lista ordenada -->
-        <div class="login-right-list">
-            <h2 class="login-heading h3">¿Cómo ingresar al Campus?</h2>
-            <ol>
-                <li><strong>Si es tu primer ingreso:</strong> escribe en nombre de usuario tu <strong>Documento de Identidad</strong> y en contraseña la palabra "<strong>cambiar</strong>” en minúscula.</li>
-                <li><strong>Si has ingresado anteriormente:</strong> en nombre de usuario escribe tu <strong>Documento de Identidad</strong> sin puntos o comas y en contraseña la habitual.</li>
-                <li><strong>Si desea restablecer tu contraseña:</strong> da clic <a href="https://aulaunivirtual-desarrollo.utp.edu.co/login/forgot_password.php">aquí</a>te enviaremos un correo electronico en este momento a tu correo registrado, si no lo encuentras en tu bandeja de entrada, revisa Spam </li> 
-                <li><strong></strong>Si tienes dudas comunícate al correo: <a href="mailto:univirtual-utp@utp.edu.co">univirtual-utp@utp.edu.co.</a> </li>
-            </ol>
-        </div>
+        {{/hasinstructions}}        
     </div>
 </div>
 
