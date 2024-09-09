@@ -1,0 +1,12 @@
+.mis-companeros .companion {
+    display: flex;
+    margin-bottom: 10px;
+}
+
+.mis-companeros .student-info {
+    margin-left: 10px;
+}
+
+.mis-companeros img {
+    border-radius: 50%;
+}

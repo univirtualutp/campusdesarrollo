@@ -1,4 +1,4 @@
 <?php
-$string['pluginname'] = 'Univirtual Advisor Profile';
-$string['noadvisor'] = 'No adviser assigned for this course.';
+$string['pluginname'] = 'Advisor Profile';
+$string['noadvisor'] = 'No advisor assigned for this course.';
 $string['sendmessage'] = 'Send Message';

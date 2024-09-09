@@ -1,20 +1,31 @@
-/* styles.css */
 .advisor-profile {
     margin-bottom: 15px;
 }
+
 .advisor-profile img {
     border-radius: 50%;
     margin-right: 10px;
     vertical-align: middle;
 }
+
 .advisor-profile p {
     display: inline-block;
     vertical-align: middle;
+    margin: 0;
 }
-.advisor-profile .whatsapp-link {
+
+.advisor-profile .icons {
+    display: inline-block;
     margin-left: 10px;
-    color: #25D366; /* Color verde de WhatsApp */
 }
-.advisor-profile .whatsapp-link i {
-    font-size: 18px; /* Tamaño del ícono */
+
+.advisor-profile .icons a {
+    font-size: 20px; /* Tamaño del ícono */
+    color: #25D366; /* Color de WhatsApp (puedes ajustar este valor) */
+    margin-right: 5px; /* Espacio entre los íconos */
+    text-decoration: none;
+}
+
+.advisor-profile .icons a:hover {
+    color: #128C7E; /* Color cuando el mouse está sobre el ícono */
 }
