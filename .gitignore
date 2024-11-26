@@ -1,0 +1,30 @@
+
+# Ignorar el archivo de configuración (config.php)
+config.php
+# Ignorar archivos de logs
+*.log
+# Ignorar archivos de caché de Composer
+/composer.lock
+/vendor/
+# Ignorar archivos temporales de Composer
+/.composer/
+# Ignorar archivos temporales de editores
+*.swp
+*.swo
+# Ignorar archivos de sistema de Mac OS X
+.DS_Store
+
+# Ignorar archivos de sistema de Windows
+Thumbs.db
+
+# Ignorar archivos de directorios de módulos y temas que no se deben subir
+/blocks/
+/mod/
+/theme/
+
+# Ignorar archivos de configuraciones específicas de IDEs
+.idea/
+/.vscode/
+
+# Ignorar archivos de configuración local de Moodle si los tienes (pueden ser específicos para tu entorno)
+local/
