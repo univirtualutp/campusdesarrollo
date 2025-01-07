@@ -1,0 +1,12 @@
+.expert_profile {
+    margin-bottom: 15px;
+}
+.expert_profile img {
+    border-radius: 50%;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+.expert_profile p {
+    display: inline-block;
+    vertical-align: middle;
+}

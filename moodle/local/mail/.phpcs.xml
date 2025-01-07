@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ruleset name="MoodleCore">
-  <rule ref="moodle"/>
-  <rule ref="moodle-extra"/>
-  <exclude-pattern type="relative">^svelte/</exclude-pattern>
-  <rule ref="moodle.Files.BoilerplateComment.WrongLine">
-    <severity>0</severity>
-  </rule>
-</ruleset>
