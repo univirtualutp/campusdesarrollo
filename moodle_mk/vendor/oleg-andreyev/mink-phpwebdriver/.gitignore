@@ -1,9 +1,0 @@
-vendor
-composer.phar
-composer.lock
-phpunit.xml
-chromedriver/
-geckodriver/
-msedgedriver/
-logs/
-vendor-bin/**/vendor/
