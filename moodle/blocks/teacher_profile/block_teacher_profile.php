@@ -15,7 +15,7 @@ class block_teacher_profile extends block_base {
         $context = context_course::instance($COURSE->id);
 
         // Incluir el CSS aquí.
-        $this->page->requires->css('/blocks/teacher_profile/css/styles.css');
+        $this->page->requires->css('/blocks/asesor_profile/css/profesor_styles.css');
 
         // Obtener todos los profesores del curso.
         $teachers = get_role_users(3, $context); // ID de rol 3 es el rol de profesor.
@@ -50,4 +50,3 @@ class block_teacher_profile extends block_base {
         return $this->content;
     }
 }
-

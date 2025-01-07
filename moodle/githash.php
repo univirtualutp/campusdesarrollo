@@ -15,18 +15,12 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Reminder plugin version information
+ * git package information
  *
- * @package    local_reminders
- * @author     Isuru Weerarathna <uisurumadushanka89@gmail.com>
- * @copyright  2012 Isuru Madushanka Weerarathna
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * The following git hash can be used to identify the exact snapshot.
+ *
+ * You can find more information about using Git for Moodle development
+ * and administration at http://docs.moodle.org/en/Git .
  */
 
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->version   = 2024040200;
-$plugin->requires  = 2018051700;        // Require moodle 3.5 or higher.
-$plugin->release   = '2.7.2';
-$plugin->maturity  = MATURITY_STABLE;
-$plugin->component = 'local_reminders';
+$githash = '95e0d9c';

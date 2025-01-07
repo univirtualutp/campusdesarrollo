@@ -230,7 +230,7 @@ elseif ($sidePre || $sidePost)
 									<?php 
 
 									$current_time = time();
-									if($mycourse->category != 29 && $mycourse->enddate > $current_time ) :?>
+									if($mycourse->category != 31 && $mycourse->enddate > $current_time ) :?>
 									
 									<div class="card col-11 col-md-3 border mx-2 p-3">
 										<h4 class="my-0 " style="font-size:1.25rem;"> <i class="fas fa-chalkboard" style="color:#00B4DD; display:inline-block; margin-right:4px"></i> <?php print_r($mycourse->fullname); ?> </h4>
@@ -404,7 +404,7 @@ $metacourses_found = false;
 
 // Verificar si hay metacursos en la categoría específica
 foreach ($metacourses as $metacourse) {
-    if ($metacourse->category == 29) {
+    if ($metacourse->category == 31) {
         $metacourses_found = true;
         break;
     }
@@ -420,7 +420,7 @@ $metacourses_found = false;
 
 // Verificar si hay metacursos en la categoría específica
 foreach ($metacourses as $metacourse) {
-    if ($metacourse->category == 29) {
+    if ($metacourse->category == 31) {
         $metacourses_found = true;
         break;
     }
@@ -436,7 +436,7 @@ foreach ($metacourses as $metacourse) {
 
         <div class="cards-container justify-content-center justify-content-md-start row py-5">
             <?php foreach ($metacourses as $metacourse): ?>
-                <?php if ($metacourse->category == 29): ?>
+                <?php if ($metacourse->category == 31): ?>
                     <?php 
                         $modlink3 = new moodle_url('/course/view.php', array('id' => $metacourse->id));
                     ?>

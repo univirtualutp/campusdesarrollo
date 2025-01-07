@@ -81,16 +81,12 @@ $menuPos = 1;
 								</div>
 							</div>
 							<div class="header-b">
-<!-- 								<div class="header-tools">
+								<div class="header-tools">
 									<?php echo theme_mb2mclmain_panel_links(); ?>
 									<a href="#" class="tools-close"><i class="lni-close"></i></a>
-								</div> -->
-								<div class="header-tools">
-    							<?php echo theme_mb2mclmain_panel_links(); ?>
-    							<a href="#" class="tools-close"><i class="lni-close"></i></a>
-    							<span class="custom-text">Ingresa acá</span> <!-- Aquí se agrega el texto -->
+									<!-- Aquí se agrega el texto -->
+									<span class="custom-text">Ingreso al Aula</span>
 								</div>
-
 								<div class="tools-show">
 									<div class="tools-show-inner">
 									<a href="#"><i class="lni-more"></i></a>

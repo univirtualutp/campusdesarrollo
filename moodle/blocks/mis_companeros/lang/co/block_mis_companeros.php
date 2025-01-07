@@ -7,3 +7,5 @@ $string['companeros'] = 'Compañeros del curso';
 $string['sendmessage'] = 'Enviar mensaje';
 $string['messagesentsuccess'] = 'El mensaje se ha enviado correctamente.';
 $string['messagesentfail'] = 'No se ha podido enviar el mensaje.';
+$string['writemessage'] = 'Escriba su mensaje (puede incluir imágenes o HTML):';
+$string['returntocourse'] = 'Regresar al curso';

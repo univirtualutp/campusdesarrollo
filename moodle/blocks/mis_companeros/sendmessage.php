@@ -1,49 +1,31 @@
 <?php
 require_once('../../config.php');
-global $DB, $USER, $PAGE;
+global $DB, $USER, $OUTPUT, $PAGE;
 
-// Obtener el ID del curso y los estudiantes seleccionados.
+// Obtener parámetros
 $courseid = required_param('courseid', PARAM_INT);
-$studentids = required_param_array('studentids', PARAM_INT);
-
-$context = context_course::instance($courseid);
+$studentids = optional_param_array('studentids', array(), PARAM_INT);
+$mensaje = required_param('mensaje', PARAM_TEXT);
 
 // Comprobar que el usuario tiene permisos en el curso.
+$context = context_course::instance($courseid);
 require_login($courseid);
-require_capability('block/mis_companeros:view', $context);
+require_capability('moodle/course:message', $context);
 
-// Configurar la página.
-$PAGE->set_url('/blocks/mis_companeros/sendmessage.php');
-$PAGE->set_pagelayout('standard');
+// Verificar si se seleccionaron estudiantes
+if (empty($studentids)) {
+    print_error('nomessagesselected', 'block_mis_companeros');
+}
 
-// Preparar el mensaje.
-$message = "Hola, este es un mensaje de " . fullname($USER) . " en el curso.";
-$sendresult = true;
-
-// Enviar mensajes a los estudiantes seleccionados.
+// Enviar el mensaje a cada estudiante seleccionado
 foreach ($studentids as $studentid) {
-    $student = $DB->get_record('user', array('id' => $studentid));
-
-    if ($student) {
-        $eventdata = new \core\message\message();
-        $eventdata->courseid = $courseid;
-        $eventdata->component = 'block_mis_companeros';
-        $eventdata->name = 'notification';
-        $eventdata->userfrom = $USER;
-        $eventdata->userto = $student;
-        $eventdata->subject = "Nuevo mensaje de " . fullname($USER);
-        $eventdata->fullmessage = $message;
-        $eventdata->fullmessageformat = FORMAT_PLAIN;
-        $eventdata->fullmessagehtml = '<p>' . $message . '</p>';
-        $eventdata->smallmessage = $message;
-        $eventdata->notification = 1; // 1 significa que es una notificación en lugar de un mensaje directo.
-
-        // Enviar el mensaje.
-        if (!message_send($eventdata)) {
-            $sendresult = false;
-        }
+    // Cargar el usuario
+    $user = $DB->get_record('user', array('id' => $studentid));
+    if ($user) {
+        // Enviar mensaje
+        message_post_message($USER->id, $user->id, $mensaje);
     }
 }
 
-redirect(new moodle_url('/blocks/mis_companeros/view.php', array('courseid' => $courseid)), 
-    $sendresult ? get_string('messagesentsuccess', 'block_mis_companeros') : get_string('messagesentfail', 'block_mis_companeros'));
+// Redirigir a la página de vista con un mensaje de éxito
+redirect(new moodle_url('/blocks/mis_companeros/view.php', array('courseid' => $courseid)), get_string('messagesent', 'block_mis_companeros'));
