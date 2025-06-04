@@ -238,6 +238,15 @@ class restore_quiz_activity_structure_step extends restore_questions_activity_st
                             display_options::AFTER_CLOSE : 0);
         }
 
+        // New setting in 4.3 needs to be set if not in the backup.
+        if (!isset($data->reviewmaxmarks)) {
+            $data->reviewmaxmarks =
+                    display_options::DURING |
+                    display_options::IMMEDIATELY_AFTER |
+                    display_options::LATER_WHILE_OPEN |
+                    display_options::AFTER_CLOSE;
+        }
+
         // The old popup column from from <= 2.1 need to be mapped to
         // the new browsersecurity. See MDL-29627.
         if (!isset($data->browsersecurity)) {
@@ -340,12 +349,17 @@ class restore_quiz_activity_structure_step extends restore_questions_activity_st
 
         if ($question->qtype === 'random') {
             // Set reference data.
-            $questionsetreference = new \stdClass();
+            $questionsetreference = new stdClass();
             $questionsetreference->usingcontextid = context_module::instance(get_coursemodule_from_instance(
                 "quiz", $module->id, $module->course)->id)->id;
             $questionsetreference->component = 'mod_quiz';
             $questionsetreference->questionarea = 'slot';
             $questionsetreference->itemid = $data->id;
+            // If, in the orginal quiz that was backed up, this random question was pointing to a
+            // category in the quiz question bank, then (for reasons explained in {@see restore_move_module_questions_categories})
+            // right now, $question->questioncontextid will incorrectly point to the course contextid.
+            // This will get fixed up later in restore_move_module_questions_categories
+            // as part of moving the question categories to the right place.
             $questionsetreference->questionscontextid = $question->questioncontextid;
             $filtercondition = new stdClass();
             $filtercondition->questioncategoryid = $question->category;

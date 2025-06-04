@@ -24,7 +24,7 @@ namespace core;
  * @copyright 2012 The Open University
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class setuplib_test extends \advanced_testcase {
+final class setuplib_test extends \advanced_testcase {
 
     /**
      * Test get_docs_url_standard in the normal case when we should link to Moodle docs.
@@ -106,8 +106,8 @@ class setuplib_test extends \advanced_testcase {
 
         // Delete existing localcache directory, as this is testing first call
         // to make_localcache_directory.
-        remove_dir($CFG->localcachedir, true);
-        $dir = make_localcache_directory('', false);
+        $this->assertTrue(remove_dir($CFG->localcachedir));
+        $dir = make_localcache_directory('');
         $this->assertSame($CFG->localcachedir, $dir);
         $this->assertFileDoesNotExist("$CFG->localcachedir/.htaccess");
         $this->assertFileExists($timestampfile);
@@ -426,7 +426,7 @@ class setuplib_test extends \advanced_testcase {
      *
      * @return array An array of arrays contain test data
      */
-    public function data_for_test_get_real_size() {
+    public static function data_for_test_get_real_size(): array {
         return array(
             array('8KB',    8192),
             array('8Kb',    8192),

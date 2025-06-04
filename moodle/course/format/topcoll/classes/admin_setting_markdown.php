@@ -23,12 +23,10 @@
  * code change. Full installation instructions, code adaptions and credits are included in the 'Readme.txt' file.
  *
  * @package    format_topcoll
- * @version    See the value of '$plugin->version' in version.php.
  * @copyright  &copy; 2022-onwards G J Barnard based upon work done by Marina Glancy.
- * @author     G J Barnard - {@link http://moodle.org/user/profile.php?id=442195}
- * @link       http://docs.moodle.org/en/Collapsed_Topics_course_format
- * @license    http://www.gnu.org/copyleft/gpl.html GNU Public License
- *
+ * @author     G J Barnard - {@link https://moodle.org/user/profile.php?id=442195}
+ * @link       https://docs.moodle.org/en/Collapsed_Topics_course_format
+ * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace format_topcoll;
@@ -40,7 +38,6 @@ namespace format_topcoll;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later.
  */
 class admin_setting_markdown extends \admin_setting {
-
     /** @var string Filename */
     private $filename;
 
@@ -94,7 +91,7 @@ class admin_setting_markdown extends \admin_setting {
      * @param string $query
      * @return string Returns an HTML string
      */
-    public function output_html($data, $query='') {
+    public function output_html($data, $query = '') {
         global $CFG, $OUTPUT;
 
         $context = new \stdClass();
@@ -102,9 +99,9 @@ class admin_setting_markdown extends \admin_setting {
         $context->description = $this->description;
 
         if (file_exists("{$CFG->dirroot}/course/format/topcoll/{$this->filename}")) {
-            $filecontents = file_get_contents($CFG->dirroot.'/course/format/topcoll/'.$this->filename);
+            $filecontents = file_get_contents($CFG->dirroot . '/course/format/topcoll/' . $this->filename);
         } else {
-            $filecontents = 'Collapsed Topics format admin_setting_markdown -> file not found: '.$this->filename;
+            $filecontents = 'Collapsed Topics format admin_setting_markdown -> file not found: ' . $this->filename;
         }
         $context->markdown = format_text($filecontents, FORMAT_MARKDOWN);
 

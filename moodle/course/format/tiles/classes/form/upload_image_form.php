@@ -20,7 +20,7 @@
  * @package format_tiles
  * @copyright  2019 David Watson {@link http://evolutioncode.uk}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- **/
+ */
 
 
 namespace format_tiles\form;
@@ -73,9 +73,8 @@ class upload_image_form extends moodleform {
                     new \moodle_url('/course/format/tiles/editor/editimage.php',
                         [
                             'delete' => 1,
-                            'courseid' => $instance['courseid'],
                             'sectionid' => $instance['sectionid'],
-                            'cmid' => $instance['cmid'],
+                            'sesskey' => sesskey(),
                         ]
                     ),
                     get_string('deleteimage', 'format_tiles'),
@@ -101,12 +100,8 @@ class upload_image_form extends moodleform {
         $mform->setExpanded('uploadnewphotoheader', true);
 
         // Hidden params.
-        $mform->addElement('hidden', 'courseid', $instance['courseid']);
-        $mform->setType('courseid', PARAM_INT);
         $mform->addElement('hidden', 'contextid', $instance['contextid']);
         $mform->setType('contextid', PARAM_INT);
-        $mform->addElement('hidden', 'cmid', $instance['cmid']);
-        $mform->setType('cmid', PARAM_INT);
         $mform->addElement('hidden', 'sectionid', $instance['sectionid']);
         $mform->setType('sectionid', PARAM_INT);
         $mform->addElement('hidden', 'action', 'uploadfile');

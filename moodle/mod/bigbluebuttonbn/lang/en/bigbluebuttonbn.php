@@ -93,11 +93,10 @@ $string['privacy:metadata:bigbluebutton:fullname'] = 'The full name of the user 
 $string['privacy:metadata:bigbluebuttonbn_recordings'] = 'Stores metadata about recordings.';
 $string['privacy:metadata:bigbluebuttonbn_recordings:userid'] = 'The user ID of the user who last changed a recording.';
 
-$string['completionattendance'] = 'Student must attend the session for:';
+$string['completionattendance'] = 'Require attendance (minutes)';
 $string['completionattendance_desc'] = 'Enter and remain in the room for at least {$a} minute(s).';
 $string['completionattendance_event_desc'] = 'Student has entered the room and remained in the session for at least {$a} minute(s)';
-$string['completionattendancegroup'] = 'Require attendance';
-$string['completionattendancegroup_help'] = 'Attending the meeting for (n) minutes is required for completion.';
+$string['completionattendancegroup'] = 'Require attendance (minutes)';
 
 $string['completionengagementchats'] = 'Chats';
 $string['completionengagementchats_desc'] = 'Participate in {$a} chat(s).';
@@ -117,14 +116,11 @@ $string['completionengagementemojis_event_desc'] = 'Changed their emoji {$a} tim
 
 $string['completionengagement_desc'] = 'Engage in activities during the meeting.';
 $string['completionengagementgroup'] = 'Require participation';
-$string['completionengagementgroup_help'] = 'Active participation during the session is required for completion.';
 
 $string['completionupdatestate'] = 'Completion update state';
 $string['completionvalidatestate'] = 'Validate completion';
 $string['completionvalidatestatetriggered'] = 'Validate completion has been triggered.';
 
-$string['completionview'] = 'Require view';
-$string['completionview_desc'] = 'Student must view the room to complete it.';
 $string['completionview_event_desc'] = 'Has viewed the room.';
 $string['sendnotification'] = 'Send notification';
 
@@ -218,10 +214,10 @@ $string['config_voicebridge_description'] = 'These settings enable or disable op
 $string['config_voicebridge_editable'] = 'Conference voice bridge can be edited';
 $string['config_voicebridge_editable_description'] = 'A conference voice bridge number can be permanently assigned to a room. When assigned, the number cannot be used for any other room.';
 
-$string['config_preuploadpresentation'] = 'Pre-upload presentation';
+$string['config_preuploadpresentation'] = 'Presentation file';
 $string['config_preuploadpresentation_description'] = 'These settings enable or disable options in the UI and also define default values for these options. The feature works only if the Moodle server is accessible to BigBlueButton.';
-$string['config_preuploadpresentation_editable'] = 'Pre-uploading presentation editable';
-$string['config_preuploadpresentation_editable_description'] = 'Preupload presentation feature is editable in the UI when the room or conference is added or updated.';
+$string['config_preuploadpresentation_editable'] = 'Presentation file on activity page';
+$string['config_preuploadpresentation_editable_description'] = 'Option in activity settings to upload presentation file to show on activity page.';
 
 $string['config_presentation_default'] = 'Default presentation file';
 $string['config_presentation_default_description'] = 'A file may be provided for use in all rooms.';
@@ -265,7 +261,7 @@ $string['config_muteonstart_default_description'] = 'If enabled the session will
 $string['config_muteonstart_editable'] = 'Mute on start can be edited';
 $string['config_muteonstart_editable_description'] = 'Mute on start by default can be edited when the instance is added or updated.';
 $string['config_welcome_default'] = 'Default welcome message';
-$string['config_welcome_default_description'] = 'The welcome message is displayed when participants enter the room. If the field is left blank, then a message set on the BigBlueButton server is displayed.';
+$string['config_welcome_default_description'] = 'The welcome message is displayed when participants enter the room. If the field is left blank, the language string \'mod_form_field_welcome_default\' is used.';
 $string['config_welcome_editable'] = 'Default welcome message is editable by teachers';
 $string['config_welcome_editable_description'] = 'Welcome message can be edited when the instance is added or updated';
 $string['config_default_messages'] = 'Default messages';
@@ -364,6 +360,7 @@ $string['index_heading_users'] = 'Users';
 $string['index_heading_viewer'] = 'Viewers';
 $string['index_heading'] = 'BigBlueButton rooms';
 $string['instanceprofilewithoutrecordings'] = 'This instance profile cannot display recordings';
+$string['managebbbextplugins'] = 'Manage BigBlueButton extension plugins';
 $string['mod_form_block_general'] = 'General';
 $string['mod_form_block_guestaccess'] = 'Guest access';
 $string['mod_form_block_room'] = 'Room settings';
@@ -654,9 +651,19 @@ $string['cachedef_currentfetch'] = 'Data to list any recording fetched recently.
 $string['cachedef_serverinfo'] = 'Remote server information';
 $string['cachedef_recordings'] = 'Recording metadata';
 $string['cachedef_validatedurls'] = 'Cache of validated URL checks';
+$string['cachedef_subplugins'] = 'Cache used by subplugin routines to accelerate when needed the plugin discovery process.';
 $string['taskname:check_pending_recordings'] = 'Fetch pending recordings';
 $string['taskname:check_dismissed_recordings'] = 'Check for recordings that haven\'t been found yet';
 $string['userlimitreached'] = 'The number of users allowed in a session has been reached.';
 $string['waitformoderator'] = 'Waiting for a moderator to join.';
 
 $string['recordingurlnotfound'] = 'The recording URL is invalid.';
+
+$string['subplugintype_bbbext'] = 'BigBlueButton activity extension';
+$string['subplugintype_bbbext_plural'] = 'BigBlueButton activity extensions';
+
+// Deprecated since Moodle 4.3.
+$string['completionview'] = 'Require view';
+$string['completionview_desc'] = 'View the room';
+$string['completionattendancegroup_help'] = 'Attending the meeting for (n) minutes is required for completion.';
+$string['completionengagementgroup_help'] = 'Active participation during the session is required for completion.';

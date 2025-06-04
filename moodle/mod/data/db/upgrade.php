@@ -48,7 +48,7 @@ function xmldb_data_upgrade($oldversion) {
     // Automatically generated Moodle v4.2.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2023042401) {
+    if ($oldversion < 2023061300) {
         // Clean orphan data_records.
         $sql = "SELECT d.id FROM {data} d
             LEFT JOIN {data_fields} f ON d.id = f.dataid
@@ -61,8 +61,11 @@ function xmldb_data_upgrade($oldversion) {
         }
 
         // Data savepoint reached.
-        upgrade_mod_savepoint(true, 2023042401, 'data');
+        upgrade_mod_savepoint(true, 2023061300, 'data');
     }
+
+    // Automatically generated Moodle v4.3.0 release upgrade line.
+    // Put any upgrade step following this.
 
     return true;
 }

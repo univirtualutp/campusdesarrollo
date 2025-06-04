@@ -669,7 +669,7 @@ class renderer extends plugin_renderer_base {
             $delay = 0;
         }
         $this->page->requires->js_init_call('M.mod_quiz.secure_window.close',
-                [$url, $delay], false, quiz_get_js_module());
+            [$url->out(false), $delay], false, quiz_get_js_module());
 
         $output .= $this->box_end();
         $output .= $this->footer();
@@ -1103,6 +1103,8 @@ class renderer extends plugin_renderer_base {
         // Prepare table header.
         $table = new html_table();
         $table->attributes['class'] = 'generaltable quizattemptsummary';
+        $table->caption = get_string('summaryofattempts', 'quiz');
+        $table->captionhide = true;
         $table->head = [];
         $table->align = [];
         $table->size = [];

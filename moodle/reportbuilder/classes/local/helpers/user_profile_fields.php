@@ -18,7 +18,6 @@ declare(strict_types=1);
 
 namespace core_reportbuilder\local\helpers;
 
-use context_system;
 use core_text;
 use core_reportbuilder\local\filters\boolean_select;
 use core_reportbuilder\local\filters\date;
@@ -113,7 +112,7 @@ class user_profile_fields {
     }
 
     /**
-     * Generate table alias for given profile field
+     * Get table alias for given profile field
      *
      * The entity name is used to ensure the alias differs when the entity is used multiple times within the same report, each
      * having their own table alias/join
@@ -133,7 +132,7 @@ class user_profile_fields {
     }
 
     /**
-     * Generate table join for given profile field
+     * Get table join for given profile field
      *
      * @param profile_field_base $profilefield
      * @return string
@@ -157,17 +156,19 @@ class user_profile_fields {
         $columns = [];
         foreach ($this->userprofilefields as $profilefield) {
             $columntype = $this->get_user_field_type($profilefield->field->datatype);
-
             $columnfieldsql = $this->get_table_alias($profilefield) . '.data';
-            if ($DB->get_dbfamily() === 'oracle') {
+
+            // Numeric (checkbox/time) fields should be cast, as should all fields for Oracle, for aggregation support.
+            if ($columntype === column::TYPE_BOOLEAN || $columntype === column::TYPE_TIMESTAMP) {
+                $columnfieldsql = "CASE WHEN {$columnfieldsql} IS NULL THEN NULL ELSE " .
+                    $DB->sql_cast_char2int($columnfieldsql, true) . " END";
+            } else if ($DB->get_dbfamily() === 'oracle') {
                 $columnfieldsql = $DB->sql_order_by_text($columnfieldsql, 1024);
             }
 
-            $column = (new column(
+            $columns[] = (new column(
                 'profilefield_' . core_text::strtolower($profilefield->field->shortname),
-                new lang_string('customfieldcolumn', 'core_reportbuilder',
-                    format_string($profilefield->field->name, true,
-                        ['escape' => false, 'context' => context_system::instance()])),
+                new lang_string('customfieldcolumn', 'core_reportbuilder', $profilefield->display_name(false)),
                 $this->entityname
             ))
                 ->add_joins($this->get_joins())
@@ -175,9 +176,14 @@ class user_profile_fields {
                 ->add_field($columnfieldsql, 'data')
                 ->set_type($columntype)
                 ->set_is_sortable($columntype !== column::TYPE_LONGTEXT)
-                ->add_callback([$this, 'format_profile_field'], $profilefield);
+                ->add_callback(static function($value, stdClass $row, profile_field_base $field): string {
+                    if ($value === null) {
+                        return '';
+                    }
 
-            $columns[] = $column;
+                    $field->data = $value;
+                    return (string) $field->display_data();
+                }, $profilefield);
         }
 
         return $columns;
@@ -228,9 +234,7 @@ class user_profile_fields {
             $filter = (new filter(
                 $classname,
                 'profilefield_' . core_text::strtolower($profilefield->field->shortname),
-                new lang_string('customfieldcolumn', 'core_reportbuilder',
-                    format_string($profilefield->field->name, true,
-                        ['escape' => false, 'context' => context_system::instance()])),
+                new lang_string('customfieldcolumn', 'core_reportbuilder', $profilefield->display_name(false)),
                 $this->entityname,
                 $fieldsql,
                 $params
@@ -273,23 +277,5 @@ class user_profile_fields {
                 break;
         }
         return $customfieldtype;
-    }
-
-    /**
-     * Formatter for a profile field. It formats the field according to its type.
-     *
-     * @param mixed $value
-     * @param stdClass $row
-     * @param profile_field_base $field
-     * @return string
-     */
-    public static function format_profile_field($value, stdClass $row, profile_field_base $field): string {
-        // Special handling of checkboxes, we want to display their boolean state rather than the input element itself.
-        if (is_a($field, 'profile_field_checkbox')) {
-            return format::boolean_as_text($value);
-        }
-
-        $field->data = $value;
-        return (string) $field->display_data();
     }
 }

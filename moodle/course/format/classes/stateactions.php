@@ -16,7 +16,6 @@
 
 namespace core_courseformat;
 
-use core_courseformat\stateupdates;
 use core\event\course_module_updated;
 use cm_info;
 use section_info;
@@ -516,7 +515,7 @@ class stateactions {
             $course,
             $ids,
             __FUNCTION__,
-            ['moodle/course:manageactivities', 'moodle/course:activityvisibility']
+            ['moodle/course:activityvisibility']
         );
 
         $format = course_get_format($course->id);
@@ -530,9 +529,14 @@ class stateactions {
                 $allowstealth = !empty($CFG->allowstealth) && $format->allow_stealth_module_visibility($cm, $section);
                 $coursevisible = ($allowstealth) ? 0 : 1;
             }
-            set_coursemodule_visible($cm->id, $visible, $coursevisible);
+            set_coursemodule_visible($cm->id, $visible, $coursevisible, false);
             $modcontext = context_module::instance($cm->id);
             course_module_updated::create_from_cm($cm, $modcontext)->trigger();
+        }
+        course_modinfo::purge_course_modules_cache($course->id, $ids);
+        rebuild_course_cache($course->id, false, true);
+
+        foreach ($cms as $cm) {
             $updates->add_cm_put($cm->id);
         }
     }
@@ -557,7 +561,8 @@ class stateactions {
             $course,
             $ids,
             __FUNCTION__,
-            ['moodle/course:manageactivities', 'moodle/backup:backuptargetimport', 'moodle/restore:restoretargetimport']
+            ['moodle/backup:backuptargetimport', 'moodle/restore:restoretargetimport'],
+            false
         );
 
         $modinfo = get_fast_modinfo($course);
@@ -706,6 +711,92 @@ class stateactions {
     }
 
     /**
+     * Set NOGROUPS const value to cms groupmode.
+     *
+     * @param stateupdates $updates the affected course elements track
+     * @param stdClass $course the course object
+     * @param int[] $ids cm ids
+     * @param int $targetsectionid not used
+     * @param int $targetcmid not used
+     */
+    public function cm_nogroups(
+        stateupdates $updates,
+        stdClass $course,
+        array $ids = [],
+        ?int $targetsectionid = null,
+        ?int $targetcmid = null
+    ): void {
+        $this->set_cm_groupmode($updates, $course, $ids, NOGROUPS);
+    }
+
+    /**
+     * Set VISIBLEGROUPS const value to cms groupmode.
+     *
+     * @param stateupdates $updates the affected course elements track
+     * @param stdClass $course the course object
+     * @param int[] $ids cm ids
+     * @param int $targetsectionid not used
+     * @param int $targetcmid not used
+     */
+    public function cm_visiblegroups(
+        stateupdates $updates,
+        stdClass $course,
+        array $ids = [],
+        ?int $targetsectionid = null,
+        ?int $targetcmid = null
+    ): void {
+        $this->set_cm_groupmode($updates, $course, $ids, VISIBLEGROUPS);
+    }
+
+    /**
+     * Set SEPARATEGROUPS const value to cms groupmode.
+     *
+     * @param stateupdates $updates the affected course elements track
+     * @param stdClass $course the course object
+     * @param int[] $ids cm ids
+     * @param int $targetsectionid not used
+     * @param int $targetcmid not used
+     */
+    public function cm_separategroups(
+        stateupdates $updates,
+        stdClass $course,
+        array $ids = [],
+        ?int $targetsectionid = null,
+        ?int $targetcmid = null
+    ): void {
+        $this->set_cm_groupmode($updates, $course, $ids, SEPARATEGROUPS);
+    }
+
+    /**
+     * Internal method to define the cm groupmode value.
+     *
+     * @param stateupdates $updates the affected course elements track
+     * @param stdClass $course the course object
+     * @param int[] $ids cm ids
+     * @param int $groupmode new value for groupmode: NOGROUPS, SEPARATEGROUPS, VISIBLEGROUPS
+     */
+    protected function set_cm_groupmode(
+        stateupdates $updates,
+        stdClass $course,
+        array $ids,
+        int $groupmode
+    ): void {
+        global $DB;
+
+        $this->validate_cms($course, $ids, __FUNCTION__, ['moodle/course:manageactivities']);
+        $modinfo = get_fast_modinfo($course);
+        $cms = $this->get_cm_info($modinfo, $ids);
+        list($insql, $inparams) = $DB->get_in_or_equal(array_keys($cms), SQL_PARAMS_NAMED);
+        $DB->set_field_select('course_modules', 'groupmode', $groupmode, "id $insql", $inparams);
+        rebuild_course_cache($course->id, false, true);
+        foreach ($cms as $cm) {
+            $modcontext = context_module::instance($cm->id);
+            course_module_updated::create_from_cm($cm, $modcontext)->trigger();
+            $updates->add_cm_put($cm->id);
+        }
+    }
+
+    /**
      * Extract several cm_info from the course_modinfo.
      *
      * @param course_modinfo $modinfo the course modinfo.
@@ -736,7 +827,7 @@ class stateactions {
     }
 
     /**
-     * Update the course content section collapsed value.
+     * Update the course content section state to collapse.
      *
      * @param stateupdates $updates the affected course elements track
      * @param stdClass $course the course object
@@ -749,17 +840,40 @@ class stateactions {
         stdClass $course,
         array $ids = [],
         ?int $targetsectionid = null,
-        ?int $targetcmid = null
+        ?int $targetcmid = null,
     ): void {
         if (!empty($ids)) {
             $this->validate_sections($course, $ids, __FUNCTION__);
         }
         $format = course_get_format($course->id);
-        $format->set_sections_preference('contentcollapsed', $ids);
+        $format->add_section_preference_ids('contentcollapsed', $ids);
     }
 
     /**
-     * Update the course index section collapsed value.
+     * Update the course content section state to expand.
+     *
+     * @param stateupdates $updates the affected course elements track
+     * @param stdClass $course the course object
+     * @param int[] $ids the collapsed section ids
+     * @param int|null $targetsectionid not used
+     * @param int|null $targetcmid not used
+     */
+    public function section_content_expanded(
+        stateupdates $updates,
+        stdClass $course,
+        array $ids = [],
+        ?int $targetsectionid = null,
+        ?int $targetcmid = null,
+    ): void {
+        if (!empty($ids)) {
+            $this->validate_sections($course, $ids, __FUNCTION__);
+        }
+        $format = course_get_format($course->id);
+        $format->remove_section_preference_ids('contentcollapsed', $ids);
+    }
+
+    /**
+     * Update the course index section state to collapse.
      *
      * @param stateupdates $updates the affected course elements track
      * @param stdClass $course the course object
@@ -772,13 +886,36 @@ class stateactions {
         stdClass $course,
         array $ids = [],
         ?int $targetsectionid = null,
-        ?int $targetcmid = null
+        ?int $targetcmid = null,
     ): void {
         if (!empty($ids)) {
             $this->validate_sections($course, $ids, __FUNCTION__);
         }
         $format = course_get_format($course->id);
-        $format->set_sections_preference('indexcollapsed', $ids);
+        $format->add_section_preference_ids('indexcollapsed', $ids);
+    }
+
+    /**
+     * Update the course index section state to expand.
+     *
+     * @param stateupdates $updates the affected course elements track
+     * @param stdClass $course the course object
+     * @param int[] $ids the collapsed section ids
+     * @param int|null $targetsectionid not used
+     * @param int|null $targetcmid not used
+     */
+    public function section_index_expanded(
+        stateupdates $updates,
+        stdClass $course,
+        array $ids = [],
+        ?int $targetsectionid = null,
+        ?int $targetcmid = null,
+    ): void {
+        if (!empty($ids)) {
+            $this->validate_sections($course, $ids, __FUNCTION__);
+        }
+        $format = course_get_format($course->id);
+        $format->remove_section_preference_ids('indexcollapsed', $ids);
     }
 
     /**
@@ -965,10 +1102,17 @@ class stateactions {
      * @param stdClass $course The course where given $cmids belong.
      * @param array $cmids List of course module ids to validate.
      * @param string $info additional information in case of error.
-     * @param array $capabilities optional capabilities checks per each cm context.
+     * @param array $capabilities optional capabilities checks to require.
+     * @param bool $usemodcontext whether to use each module context, or the course context
      * @throws moodle_exception if any id is not valid
      */
-    protected function validate_cms(stdClass $course, array $cmids, ?string $info = null, array $capabilities = []): void {
+    protected function validate_cms(
+        stdClass $course,
+        array $cmids,
+        ?string $info = null,
+        array $capabilities = [],
+        bool $usemodcontext = true,
+    ): void {
 
         if (empty($cmids)) {
             throw new moodle_exception('emptycmids', 'core', null, $info);
@@ -979,10 +1123,16 @@ class stateactions {
         if (count($cmids) != count($intersect)) {
             throw new moodle_exception('unexistingcmid', 'core', null, $info);
         }
+
         if (!empty($capabilities)) {
-            foreach ($cmids as $cmid) {
-                $modcontext = context_module::instance($cmid);
-                require_all_capabilities($capabilities, $modcontext);
+            if ($usemodcontext) {
+                foreach ($cmids as $cmid) {
+                    $modcontext = context_module::instance($cmid);
+                    require_all_capabilities($capabilities, $modcontext);
+                }
+            } else {
+                $coursecontext = context_course::instance($course->id);
+                require_all_capabilities($capabilities, $coursecontext);
             }
         }
     }

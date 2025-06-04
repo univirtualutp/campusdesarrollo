@@ -31,9 +31,13 @@ define(['jquery'], function($) {
         SHOW: 'show',
         TOGGLE_HIGHLIGHT: '.section_action_menu .dropdown-item.editing_highlight',
         TOGGLE_SHOWHIDE: '.section_action_menu .dropdown-item.editing_showhide',
+        DELETE: '.section_action_menu .dropdown-item.editing_delete',
         BUTTON_HIDE: '.cm_action_menu .dropdown-menu .editing_hide',
         BUTTON_SHOW: '.cm_action_menu .dropdown-menu .editing_show',
-        DELETE: '.section_action_menu .dropdown-item[data-action="deleteSection"]'
+        ACTIVITYBUTTON_HIDE: '.cm_action_menu .dropdown-menu [data-action="cmHide"]',
+        ACTIVITYBUTTON_SHOW: '.cm_action_menu .dropdown-menu [data-action="cmShow"]',
+        ACTIVITYDUPLICATE: '.cm_action_menu .dropdown-item.editing_duplicate',
+        ACTIVITIYDELETE: '.cm_action_menu  .dropdown-item.editing_delete'
     };
 
     /**
@@ -65,7 +69,7 @@ define(['jquery'], function($) {
      * Adjust the general section activities visibility after first row
      */
     function adjustGeneralSectionActivities() {
-        if ($(SELECTORS.FIRST_SECTION + ' .activity').length <= getActivitiesPerRow()) {
+        if ($(SELECTORS.FIRST_SECTION + '  ul.general-section-activities li').length <= getActivitiesPerRow()) {
             $(SELECTORS.FIRST_SECTION).removeClass(SELECTORS.ACTIVITY_TOGGLE_CLASS);
             $(SELECTORS.ACTIVITY_TOGGLE_WRAPPER).hide();
         } else {
@@ -79,18 +83,19 @@ define(['jquery'], function($) {
      */
     function init() {
 
-        $('#page-course-view-remuiformat .section-modchooser-link').addClass("btn btn-primary");
+        $('#page-course-view-remuiformat .section-modchooser-link:not(.dropdown-item)').addClass("btn btn-primary");
 
         adjustGeneralSectionActivities();
-        $(window).resize(function() {
-            adjustGeneralSectionActivities();
-        });
+        // It should not be change during resize of screen it causing issue on mobile view so I am commenting it
+        // $(window).resize(function() {
+        //     adjustGeneralSectionActivities();
+        // });
 
-        if ($(".general-section-activities li:last").css('display') == 'none') {
-            $(".showactivitywrapper").show();
-        } else {
-            $(".showactivitywrapper").hide();
-        }
+        // if ($(".general-section-activities li:last").css('display') == 'none') {
+        //     $(".showactivitywrapper").show();
+        // } else {
+        //     $(".showactivitywrapper").hide();
+        // }
 
         $(SELECTORS.ACTIVITY_TOGGLE).on('click', function() {
 
@@ -101,7 +106,7 @@ define(['jquery'], function($) {
                 $(this).html(M.util.get_string('showmore', 'format_remuiformat'));
                 $(this).toggleClass(SELECTORS.SHOW); // Add show class
                 $("html, body").animate({
-                    scrollTop: $(SELECTORS.FIRST_SECTION + ' .activity:first-child').offset().top - 66
+                    scrollTop: $(SELECTORS.FIRST_SECTION + ' ul.general-section-activities li:first-child').offset().top - 66
                 }, "slow");
             }
             $(SELECTORS.FIRST_SECTION).toggleClass(SELECTORS.ACTIVITY_TOGGLE_CLASS);
@@ -111,17 +116,44 @@ define(['jquery'], function($) {
         $('body').on('click', `${SELECTORS.TOGGLE_HIGHLIGHT},
                                ${SELECTORS.TOGGLE_SHOWHIDE},
                                ${SELECTORS.BUTTON_HIDE},
-                               ${SELECTORS.BUTTON_SHOW}`, function() {
-            location.reload();
+                               ${SELECTORS.BUTTON_SHOW},
+                               ${SELECTORS.ACTIVITYBUTTON_HIDE},
+                               ${SELECTORS.ACTIVITYBUTTON_SHOW}`, function() {
+            setTimeout(function() {
+                location.reload();
+            }, 400);
+        });
+
+        // Handling activity duplicate.
+        $('body').on('click', `${SELECTORS.ACTIVITYDUPLICATE}`, function() {
+            setTimeout(function() {
+                location.reload();
+            }, 200);
         });
 
         // Handling deleteAction
-        $('body').on('click', `${SELECTORS.DELETE}`, function(event) {
+        $('body').on('click', `${SELECTORS.ACTIVITIYDELETE},${SELECTORS.DELETE}`, function(event) {
             event.preventDefault();
-            window.location.href = $(this).attr('href');
+            if($(this).attr('data-action') == 'cmDelete' ){
+                window.location.href = $(this).attr('href');
+            }
+            if($(this).attr('data-action') == 'deleteSection' ){
+                if(moodleversionbranch >= '405'){
+                    location.reload();
+                }else{
+                    window.location.href = $(this).attr('href');
+                }
+            }
             return true;
         });
 
+        // Handling addSubsection
+        $('body').on('click', '[data-action="addModule"]', function(event) {
+            setTimeout(() => {
+                location.reload();
+            }, 200);
+            return true;
+        });
 
         var summaryheight = $('.read-more-target').height();
 

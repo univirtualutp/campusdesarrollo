@@ -22,7 +22,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace format_topics\output\courseformat\content;
+namespace format_remuiformat\output\courseformat\content;
 
 use core_courseformat\base as course_format;
 use core_courseformat\output\local\content\section as section_base;
@@ -44,8 +44,9 @@ class section extends section_base {
         $format = $this->format;
 
         $data = parent::export_for_template($output);
+        $courseformatdatacommontrait =  \format_remuiformat\course_format_data_common_trait::getinstance();
 
-        if (!$this->format->get_section_number()) {
+        if (!$courseformatdatacommontrait->edw_get_section_num($this->format)) {
             $addsectionclass = $format->get_output_classname('content\\addsection');
             $addsection = new $addsectionclass($format);
             $data->numsections = $addsection->export_for_template($output);

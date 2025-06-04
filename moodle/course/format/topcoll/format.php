@@ -23,12 +23,10 @@
  * code change. Full installation instructions, code adaptions and credits are included in the 'Readme.txt' file.
  *
  * @package    format_topcoll
- * @version    See the value of '$plugin->version' in version.php.
  * @copyright  &copy; 2009-onwards G J Barnard in respect to modifications of standard topics format.
- * @author     G J Barnard - {@link http://moodle.org/user/profile.php?id=442195}
- * @link       http://docs.moodle.org/en/Collapsed_Topics_course_format
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- *
+ * @author     G J Barnard - {@link https://moodle.org/user/profile.php?id=442195}
+ * @link       https://docs.moodle.org/en/Collapsed_Topics_course_format
+ * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 defined('MOODLE_INTERNAL') || die();
 
@@ -74,10 +72,10 @@ course_create_sections_if_missing($course, range(0, $courseformatoptions['numsec
 $renderer = $PAGE->get_renderer('format_topcoll');
 
 $content = '';
-$contentcontext = array(
+$contentcontext = [
     'title' => $courseformat->page_title(),
-    'userisediting' => $PAGE->user_is_editing()
-);
+    'userisediting' => $PAGE->user_is_editing(),
+];
 if (!empty($displaysection)) {
     $courseformat->set_section_number($displaysection);
     $content = $renderer->single_section_page($displaysection);

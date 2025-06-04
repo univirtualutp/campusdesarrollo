@@ -214,8 +214,8 @@ abstract class grade_report {
         // init gtree in child class
 
         // Set any url params.
-        $this->usersearch = optional_param('searchvalue', '', PARAM_NOTAGS);
-        $this->userid = optional_param('userid', -1, PARAM_INT);
+        $this->usersearch = optional_param('gpr_search', '', PARAM_NOTAGS);
+        $this->userid = optional_param('gpr_userid', -1, PARAM_INT);
     }
 
     /**
@@ -344,7 +344,7 @@ abstract class grade_report {
      */
     public function get_lang_string($strcode, $section=null) {
         debugging('grade_report::get_lang_string() is deprecated, please use' .
-            ' grade_helper::get_lang_string() instead.', DEBUG_DEVELOPER);
+            ' get_string() instead.', DEBUG_DEVELOPER);
 
         if (empty($this->lang_strings[$strcode])) {
             $this->lang_strings[$strcode] = get_string($strcode, $section);
@@ -492,7 +492,7 @@ abstract class grade_report {
             [
                 'where' => $keywordswhere,
                 'params' => $keywordsparams,
-            ] = $this->get_users_search_sql($mappings, (array)$userfields);
+            ] = $this->get_users_search_sql($mappings, $userfields->get_required_fields());
             $this->userwheresql .= " AND $keywordswhere";
             $this->userwheresql_params = array_merge($this->userwheresql_params, $keywordsparams);
         }
@@ -596,9 +596,15 @@ abstract class grade_report {
         global $OUTPUT;
         $pix = ['up' => 't/sort_desc', 'down' => 't/sort_asc'];
         $matrix = ['up' => 'desc', 'down' => 'asc'];
-        $strsort = grade_helper::get_lang_string($matrix[$direction], 'moodle');
+        $strsort = get_string($matrix[$direction], 'moodle');
         $arrow = $OUTPUT->pix_icon($pix[$direction], '', '', ['class' => 'sorticon']);
-        return html_writer::link($sortlink, $arrow, ['title' => $strsort, 'aria-label' => $strsort, 'data-collapse' => 'sort']);
+
+        if (!empty($sortlink)) {
+            $sortlink->param('sort', ($direction == 'up' ? 'asc' : 'desc'));
+        }
+
+        return html_writer::link($sortlink, $arrow, ['title' => $strsort, 'aria-label' => $strsort, 'data-collapse' => 'sort',
+            'class' => 'arrow_link py-1']);
     }
 
     /**
@@ -932,5 +938,25 @@ abstract class grade_report {
 
         return $modnames;
     }
+
+    /**
+     * Load a valid list of gradable users in a course.
+     *
+     * @param int $courseid The course ID.
+     * @param int|null $groupid The group ID (optional).
+     * @return array A list of enrolled gradable users.
+     */
+    public static function get_gradable_users(int $courseid, ?int $groupid = null): array {
+        global $CFG;
+        require_once($CFG->dirroot . '/grade/lib.php');
+
+        $context = context_course::instance($courseid);
+        $defaultgradeshowactiveenrol = !empty($CFG->grade_report_showonlyactiveenrol);
+        $onlyactiveenrol = get_user_preferences('grade_report_showonlyactiveenrol', $defaultgradeshowactiveenrol) ||
+            !has_capability('moodle/course:viewsuspendedusers', $context);
+
+        return get_gradable_users($courseid, $groupid, $onlyactiveenrol);
+    }
+
 }
 

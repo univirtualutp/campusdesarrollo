@@ -29,14 +29,10 @@ use GuzzleHttp\Psr7\Uri;
  * @category   test
  * @copyright  2022 Safat Shahin <safat.shahin@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ *
  * @coversDefaultClass \core\http_client
- * @coversDefaultClass \core\local\guzzle\redirect_middleware
- * @coversDefaultClass \core\local\guzzle\check_request
- * @coversDefaultClass \core\local\guzzle\cache_item
- * @coversDefaultClass \core\local\guzzle\cache_handler
- * @coversDefaultClass \core\local\guzzle\cache_storage
  */
-class http_client_test extends \advanced_testcase {
+final class http_client_test extends \advanced_testcase {
 
     /**
      * Read the object attributes and return the configs for test.
@@ -207,17 +203,22 @@ class http_client_test extends \advanced_testcase {
         $mockhelper = $this->getMockBuilder('\core\files\curl_security_helper')->getMock();
 
         // Make the mock return a different string.
-        $mockhelper->expects($this->any())->method('get_blocked_url_string')->will($this->returnValue('You shall not pass'));
+        $blocked = "http://blocked.com";
+        $mockhelper->expects($this->any())->method('get_blocked_url_string')->will($this->returnValue($blocked));
 
         // And make the mock security helper block all URLs. This helper instance doesn't care about config.
         $mockhelper->expects($this->any())->method('url_is_blocked')->will($this->returnValue(true));
 
-        $mock = new MockHandler([new Response(200, [], 'You shall not pass')]);
-        $client = new \core\http_client(['mock' => $mock, 'securityhelper' => $mockhelper]);
-        $this->expectException(\GuzzleHttp\Exception\RequestException::class);
-        $response = $client->request('GET', $testhtml);
+        $client = new \core\http_client(['securityhelper' => $mockhelper]);
 
-        $this->assertSame('You shall not pass', $response->getBody()->getContents());
+        $this->resetDebugging();
+        try {
+            $client->request('GET', $testhtml);
+            $this->fail("Blocked Request should have thrown an exception");
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
+            $this->assertDebuggingCalled("Blocked $blocked [user 0]", DEBUG_NONE);
+        }
+
     }
 
     /**

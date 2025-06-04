@@ -35,7 +35,7 @@ require_once($CFG->dirroot . '/enrol/manual/externallib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since Moodle 2.4
  */
-class externallib_test extends externallib_advanced_testcase {
+final class externallib_test extends externallib_advanced_testcase {
 
     /**
      * Test get_enrolled_users
@@ -116,6 +116,10 @@ class externallib_test extends externallib_advanced_testcase {
             $this->fail('Exception expected if course does not have manual instance');
         } catch (\moodle_exception $e) {
             $this->assertSame('wsnoinstance', $e->errorcode);
+            $this->assertSame(
+                "Manual enrolment plugin instance doesn't exist or is disabled for the course (id = {$course2->id})",
+                $e->getMessage()
+            );
         }
     }
 
@@ -274,14 +278,21 @@ class externallib_test extends externallib_advanced_testcase {
         } catch (\Exception $ex) {
             $this->assertTrue($ex instanceof \invalid_parameter_exception);
         }
-        $DB->delete_records('enrol', array('id' => $enrolinstance->id));
+
+        // Call for course without manual instance.
+        $DB->delete_records('user_enrolments');
+        $DB->delete_records('enrol', ['courseid' => $course->id]);
         try {
             enrol_manual_external::unenrol_users(array(
                 array('userid' => $student->id + 1, 'courseid' => $course->id),
             ));
-            $this->fail('Exception expected: invalid student id');
-        } catch (\Exception $ex) {
-            $this->assertTrue($ex instanceof \moodle_exception);
+            $this->fail('Exception expected if course does not have manual instance');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('wsnoinstance', $e->errorcode);
+            $this->assertSame(
+                "Manual enrolment plugin instance doesn't exist or is disabled for the course (id = {$course->id})",
+                $e->getMessage()
+            );
         }
     }
 }

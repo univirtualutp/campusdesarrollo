@@ -169,11 +169,23 @@ class filter_manager {
      */
     protected function apply_filter_chain($text, $filterchain, array $options = array(),
             array $skipfilters = null) {
+        if (!isset($options['stage'])) {
+            $filtermethod = 'filter';
+        } else if (in_array($options['stage'], ['pre_format', 'pre_clean', 'post_clean', 'string'], true)) {
+            $filtermethod = 'filter_stage_' . $options['stage'];
+        } else {
+            $filtermethod = 'filter';
+            debugging('Invalid filter stage specified in options: ' . $options['stage'], DEBUG_DEVELOPER);
+        }
+        if ($text === null || $text === '') {
+            // Nothing to filter.
+            return '';
+        }
         foreach ($filterchain as $filtername => $filter) {
             if ($skipfilters !== null && in_array($filtername, $skipfilters)) {
                 continue;
             }
-            $text = $filter->filter($text, $options);
+            $text = $filter->$filtermethod($text, $options);
         }
         return $text;
     }
@@ -216,8 +228,10 @@ class filter_manager {
     public function filter_text($text, $context, array $options = array(),
             array $skipfilters = null) {
         $text = $this->apply_filter_chain($text, $this->get_text_filters($context), $options, $skipfilters);
-        // Remove <nolink> tags for XHTML compatibility.
-        $text = str_replace(array('<nolink>', '</nolink>'), '', $text);
+        if (!isset($options['stage']) || $options['stage'] === 'post_clean') {
+            // Remove <nolink> tags for XHTML compatibility after the last filtering stage.
+            $text = str_replace(array('<nolink>', '</nolink>'), '', $text);
+        }
         return $text;
     }
 
@@ -229,7 +243,7 @@ class filter_manager {
      * @return string resulting string
      */
     public function filter_string($string, $context) {
-        return $this->apply_filter_chain($string, $this->get_string_filters($context));
+        return $this->apply_filter_chain($string, $this->get_string_filters($context), ['stage' => 'string']);
     }
 
     /**
@@ -368,7 +382,9 @@ class performance_measuring_filter_manager extends filter_manager {
 
     public function filter_text($text, $context, array $options = array(),
             array $skipfilters = null) {
-        $this->textsfiltered++;
+        if (!isset($options['stage']) || $options['stage'] === 'post_clean') {
+            $this->textsfiltered++;
+        }
         return parent::filter_text($text, $context, $options, $skipfilters);
     }
 
@@ -450,11 +466,69 @@ abstract class moodle_text_filter {
     /**
      * Override this function to actually implement the filtering.
      *
+     * Filter developers must make sure that filtering done after text cleaning
+     * does not introduce security vulnerabilities.
+     *
      * @param string $text some HTML content to process.
      * @param array $options options passed to the filters
      * @return string the HTML content after the filtering has been applied.
      */
     public abstract function filter($text, array $options = array());
+
+    /**
+     * Filter text before changing format to HTML.
+     *
+     * @param string $text
+     * @param array $options
+     * @return string
+     */
+    public function filter_stage_pre_format(string $text, array $options): string {
+        // NOTE: override if necessary.
+        return $text;
+    }
+
+    /**
+     * Filter HTML text before sanitising text.
+     *
+     * NOTE: this is called even if $options['noclean'] is true and text is not cleaned.
+     *
+     * @param string $text
+     * @param array $options
+     * @return string
+     */
+    public function filter_stage_pre_clean(string $text, array $options): string {
+        // NOTE: override if necessary.
+        return $text;
+    }
+
+    /**
+     * Filter HTML text at the very end after text is sanitised.
+     *
+     * NOTE: this is called even if $options['noclean'] is true and text is not cleaned.
+     *
+     * @param string $text
+     * @param array $options
+     * @return string
+     */
+    public function filter_stage_post_clean(string $text, array $options): string {
+        // NOTE: override if necessary.
+        return $this->filter($text, $options);
+    }
+
+    /**
+     * Filter simple text coming from format_string().
+     *
+     * Note that unless $CFG->formatstringstriptags is disabled
+     * HTML tags are not expected in returned value.
+     *
+     * @param string $text
+     * @param array $options
+     * @return string
+     */
+    public function filter_stage_string(string $text, array $options): string {
+        // NOTE: override if necessary.
+        return $this->filter($text, $options);
+    }
 }
 
 
@@ -495,6 +569,12 @@ class filterobject {
 
     /** @var null|string once initialised, holds the mangled HTML to replace the regexp with. */
     public $workreplacementphrase = null;
+
+    /** @var null|callable hold a replacement function to be called. */
+    public $replacementcallback;
+
+    /** @var null|array data to be passed to $replacementcallback. */
+    public $replacementcallbackdata;
 
     /**
      * Constructor.
@@ -1025,32 +1105,49 @@ function filter_get_active_in_context($context) {
 
     $contextids = str_replace('/', ',', trim($context->path, '/'));
 
-    // The following SQL is tricky. It is explained on
-    // http://docs.moodle.org/dev/Filter_enable/disable_by_context.
-    $sql = "SELECT active.filter, fc.name, fc.value
-         FROM (SELECT f.filter, MAX(f.sortorder) AS sortorder
-             FROM {filter_active} f
-             JOIN {context} ctx ON f.contextid = ctx.id
-             WHERE ctx.id IN ($contextids)
-             GROUP BY filter
-             HAVING MAX(f.active * ctx.depth) > -MIN(f.active * ctx.depth)
-         ) active
-         LEFT JOIN {filter_config} fc ON fc.filter = active.filter AND fc.contextid = $context->id
-         ORDER BY active.sortorder";
-    $rs = $DB->get_recordset_sql($sql);
+    // Postgres recordset performance is much better with a limit.
+    // This should be much larger than anything needed in practice. The code below checks we don't hit this limit.
+    $maxpossiblerows = 10000;
+    // The key line in the following query is the HAVING clause.
+    // If a filter is disabled at system context, then there is a row with active -9999 and depth 1,
+    // so the -MIN is always large, and the MAX will be smaller than that and this filter won't be returned.
+    // Otherwise, there will be a bunch of +/-1s at various depths,
+    // and this clause verifies there is a +1 that deeper than any -1.
+    $rows = $DB->get_recordset_sql("
+            SELECT active.filter, fc.name, fc.value
+
+              FROM (
+                    SELECT fa.filter, MAX(fa.sortorder) AS sortorder
+                      FROM {filter_active} fa
+                      JOIN {context} ctx ON fa.contextid = ctx.id
+                     WHERE ctx.id IN ($contextids)
+                  GROUP BY fa.filter
+                    HAVING MAX(fa.active * ctx.depth) > -MIN(fa.active * ctx.depth)
+                   ) active
+         LEFT JOIN {filter_config} fc ON fc.filter = active.filter AND fc.contextid = ?
+
+          ORDER BY active.sortorder
+        ", [$context->id], 0, $maxpossiblerows);
 
     // Massage the data into the specified format to return.
-    $filters = array();
-    foreach ($rs as $row) {
+    $filters = [];
+    $rowcount = 0;
+    foreach ($rows as $row) {
+        $rowcount += 1;
         if (!isset($filters[$row->filter])) {
-            $filters[$row->filter] = array();
+            $filters[$row->filter] = [];
         }
         if (!is_null($row->name)) {
             $filters[$row->filter][$row->name] = $row->value;
         }
     }
+    $rows->close();
 
-    $rs->close();
+    if ($rowcount >= $maxpossiblerows) {
+        // If this ever did happen, which seems essentially impossible, then it would lead to very subtle and
+        // hard to understand bugs, so ensure it leads to an unmissable error.
+        throw new coding_exception('Hit the row limit that should never be hit in filter_get_active_in_context.');
+    }
 
     return $filters;
 }

@@ -23,12 +23,10 @@
  * code change. Full installation instructions, code adaptions and credits are included in the 'Readme.txt' file.
  *
  * @package    format_topcoll
- * @version    See the value of '$plugin->version' in version.php.
  * @copyright  &copy; 2012-onwards G J Barnard in respect to modifications of standard topics format.
- * @author     G J Barnard - {@link http://moodle.org/user/profile.php?id=442195}
- * @link       http://docs.moodle.org/en/Collapsed_Topics_course_format
- * @license    http://www.gnu.org/copyleft/gpl.html GNU Public License
- *
+ * @author     G J Barnard - {@link https://moodle.org/user/profile.php?id=442195}
+ * @link       https://docs.moodle.org/en/Collapsed_Topics_course_format
+ * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot . '/course/format/topcoll/lib.php');
@@ -38,7 +36,6 @@ require_once($CFG->dirroot . '/course/format/topcoll/lib.php');
  * needed to restore one topcoll course format.
  */
 class restore_format_topcoll_plugin extends restore_format_plugin {
-
     /** @var int */
     protected $originalnumsections = 0;
 
@@ -53,11 +50,12 @@ class restore_format_topcoll_plugin extends restore_format_plugin {
             global $DB;
             $maxsection = $DB->get_field_sql(
                 'SELECT max(section) FROM {course_sections} WHERE course = ?',
-                [$this->step->get_task()->get_courseid()]);
+                [$this->step->get_task()->get_courseid()]
+            );
             $this->originalnumsections = (int)$maxsection;
         }
 
-        $paths = array();
+        $paths = [];
 
         // Add own format stuff.
         $elename = 'topcoll'; // This defines the postfix of 'process_*' below.
@@ -79,15 +77,15 @@ class restore_format_topcoll_plugin extends restore_format_plugin {
         $data = (object) $data;
         /* We only process this information if the course we are restoring to
            has 'topcoll' format (target format can change depending of restore options). */
-        $format = $DB->get_field('course', 'format', array('id' => $this->task->get_courseid()));
+        $format = $DB->get_field('course', 'format', ['id' => $this->task->get_courseid()]);
         if ($format != 'topcoll') {
             return;
         }
 
         $data->courseid = $this->task->get_courseid();
 
-        if (!($course = $DB->get_record('course', array('id' => $data->courseid)))) {
-            print_error('invalidcourseid', 'error');
+        if (!($course = $DB->get_record('course', ['id' => $data->courseid]))) {
+            throw new moodle_exception(get_string('invalidcourseid', 'error'));
         } // From /course/view.php.
         $courseformat = course_get_format($course);
 
@@ -103,12 +101,10 @@ class restore_format_topcoll_plugin extends restore_format_plugin {
             $data->layoutcolumns,
             $data->tgfgcolour,
             $data->tgbgcolour,
-            $data->tgbghvrcolour);
+            $data->tgbghvrcolour
+        );
 
         // No need to annotate anything here.
-    }
-
-    protected function after_execute_structure() {
     }
 
     /**
@@ -124,7 +120,7 @@ class restore_format_topcoll_plugin extends restore_format_plugin {
 
         /* We only process this information if the course we are restoring to has 'topcoll' format (target format can change
            depending of restore options). */
-        $format = $DB->get_field('course', 'format', array('id' => $courseid));
+        $format = $DB->get_field('course', 'format', ['id' => $courseid]);
         if ($format !== 'topcoll') {
             return;
         }
@@ -154,8 +150,10 @@ class restore_format_topcoll_plugin extends restore_format_plugin {
             if ($this->step->get_task()->get_setting_value($key . '_included')) {
                 $sectionnum = (int)$section->title;
                 if ($sectionnum > $settings['numsections'] && $sectionnum > $this->originalnumsections) {
-                    $DB->execute("UPDATE {course_sections} SET visible = 0 WHERE course = ? AND section = ?",
-                        [$this->step->get_task()->get_courseid(), $sectionnum]);
+                    $DB->execute(
+                        "UPDATE {course_sections} SET visible = 0 WHERE course = ? AND section = ?",
+                        [$this->step->get_task()->get_courseid(), $sectionnum]
+                    );
                 }
             }
         }

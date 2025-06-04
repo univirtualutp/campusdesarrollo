@@ -46,9 +46,10 @@ class mod_dialogue_message_form extends moodleform {
 
         $mform->addElement('editor', 'body', get_string('message', 'dialogue'), null, self::editor_options());
         $mform->setType('body', PARAM_RAW);
+        $mform->addRule('body', null, 'required', null, 'client');
 
         // Maxattachments = 0 = No attachments at all.
-        if (!get_config('dialogue', 'maxattachments') or !empty($PAGE->activityrecord->maxattachments)) {
+        if (!get_config('dialogue', 'maxattachments') || !empty($PAGE->activityrecord->maxattachments)) {
             $mform->addElement('filemanager', 'attachments[itemid]',
                 get_string('attachments', 'dialogue'), null, self::attachment_options());
         }
@@ -256,13 +257,12 @@ class mod_dialogue_conversation_form extends mod_dialogue_message_form {
             'cmid' => $cm->id,
             'valuehtmlcallback' => function($value) {
                 global $OUTPUT;
-
                 $userfieldsapi = \core_user\fields::for_name();
                 $allusernames = $userfieldsapi->get_sql('', false, '', '', false)->selects;
                 $fields = 'id, ' . $allusernames;
                 $user = \core_user::get_user($value, $fields);
                 $useroptiondata = [
-                    'fullname' => fullname($user),
+                    'fullname' => dialogue_add_user_fullname($user),
                 ];
                 return $OUTPUT->render_from_template('mod_dialogue/form-user-selector-suggestion', $useroptiondata);
             }

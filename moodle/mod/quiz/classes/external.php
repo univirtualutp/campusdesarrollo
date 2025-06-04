@@ -131,7 +131,7 @@ class mod_quiz_external extends external_api {
                         $quizdetails['hasquestions'] = (int) $quizobj->has_questions();
                         $quizdetails['autosaveperiod'] = get_config('quiz', 'autosaveperiod');
 
-                        $additionalfields = ['attemptonlast', 'reviewattempt', 'reviewcorrectness', 'reviewmarks',
+                        $additionalfields = ['attemptonlast', 'reviewattempt', 'reviewcorrectness', 'reviewmaxmarks', 'reviewmarks',
                                                     'reviewspecificfeedback', 'reviewgeneralfeedback', 'reviewrightanswer',
                                                     'reviewoverallfeedback', 'questionsperpage', 'navmethod',
                                                     'browsersecurity', 'delay1', 'delay2', 'showuserpicture', 'showblocks',
@@ -208,8 +208,9 @@ class mod_quiz_external extends external_api {
                                                                     \mod_quiz\question\display_options class. It is formed by ORing
                                                                     together the constants defined there.', VALUE_OPTIONAL),
                             'reviewcorrectness' => new external_value(PARAM_INT, 'Whether users are allowed to review their quiz
-                                                                        attempts at various times.
-                                                                        A bit field, like reviewattempt.', VALUE_OPTIONAL),
+                                                       attempts at various times.A bit field, like reviewattempt.', VALUE_OPTIONAL),
+                            'reviewmaxmarks' => new external_value(PARAM_INT, 'Whether users are allowed to review their quiz
+                                                  attempts at various times. A bit field, like reviewattempt.', VALUE_OPTIONAL),
                             'reviewmarks' => new external_value(PARAM_INT, 'Whether users are allowed to review their quiz attempts
                                                                 at various times. A bit field, like reviewattempt.',
                                                                 VALUE_OPTIONAL),
@@ -636,6 +637,8 @@ class mod_quiz_external extends external_api {
             require_capability('mod/quiz:viewreports', $context);
         }
 
+        // Update quiz with override information.
+        $quiz = quiz_update_effective_access($quiz, $params['userid']);
         $attempts = quiz_get_user_attempts($quiz->id, $user->id, 'all', true);
 
         $result = [];
@@ -1446,6 +1449,10 @@ class mod_quiz_external extends external_api {
             $page = 'all';
         }
 
+        // Make sure all users associated to the attempt steps are loaded. Otherwise, this will
+        // trigger a debugging message.
+        $attemptobj->preload_all_attempt_step_users();
+
         // Prepare the output.
         $result = [];
         $result['attempt'] = $attemptobj->get_attempt();
@@ -2000,7 +2007,6 @@ class mod_quiz_external extends external_api {
 
         $quizobj = quiz_settings::create($cm->instance, $USER->id);
         $quizobj->preload_questions();
-        $quizobj->load_questions();
 
         // Question types used.
         $result = [];

@@ -283,7 +283,7 @@ class manager {
                 'title' => get_string('importtour', 'tool_usertours'),
             ],
             (object) [
-                'link'  => new \moodle_url('https://archive.moodle.net/tours'),
+                'link'  => new \moodle_url('https://moodle.net/search', ['q' => 'user tours']),
                 'linkproperties' => [
                         'target' => '_blank',
                     ],
@@ -870,6 +870,7 @@ class manager {
             '40_tour_navigation_mycourse.json' => 5,
             '40_tour_navigation_course_teacher.json' => 3,
             '40_tour_navigation_course_student.json' => 3,
+            '42_tour_gradebook_grader_report.json' => 1,
         ];
 
         // These are tours that we used to ship but don't ship any longer.

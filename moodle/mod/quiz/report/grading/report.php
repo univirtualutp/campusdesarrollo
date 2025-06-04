@@ -382,7 +382,7 @@ class quiz_grading_report extends report_base {
 
             $row = [];
 
-            $row[] = $this->questions[$counts->slot]->number;
+            $row[] = $this->questions[$counts->slot]->displaynumber;
 
             $row[] = $PAGE->get_renderer('question', 'bank')->qtype_icon($this->questions[$counts->slot]->qtype);
 
@@ -720,13 +720,15 @@ class quiz_grading_report extends report_base {
         $a = new stdClass();
         $a->attempt = $attempt->attempt;
         $a->fullname = fullname($attempt);
+
         $customfields = [];
         foreach ($this->extrauserfields as $field) {
-            if ($attempt->{s($field)}) {
-                $customfields[] = $attempt->{s($field)};
+            if (strval($attempt->{$field}) !== '') {
+                $customfields[] = s($attempt->{$field});
             }
         }
-        $a->customfields = trim(implode(', ', (array)$customfields), ' ,');
+
+        $a->customfields = implode(', ', $customfields);
 
         if ($shownames && $showcustomfields) {
             return get_string('gradingattemptwithcustomfields', 'quiz_grading', $a);

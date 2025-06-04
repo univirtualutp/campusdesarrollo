@@ -452,6 +452,11 @@ class framework implements H5PFrameworkInterface {
             'width' => 'width',
             'height' => 'height',
             'Missing main library @library' => 'missingmainlibrary',
+            'Rotate Left' => 'rotateLeft',
+            'Rotate Right' => 'rotateRight',
+            'Crop Image' => 'cropImage',
+            'Confirm Crop' => 'confirmCrop',
+            'Cancel Crop' => 'cancelCrop',
         ];
 
         if (isset($translationsmap[$message])) {
@@ -907,6 +912,13 @@ class framework implements H5PFrameworkInterface {
             $params->title = $content['title'];
             $content['params'] = json_encode($params);
         }
+        // Add metadata to 'params'.
+        if (!empty($content['metadata'])) {
+            $params = json_decode($content['params']);
+            $params->metadata = $content['metadata'];
+            $content['params'] = json_encode($params);
+        }
+
         $data = [
             'jsoncontent' => $content['params'],
             'displayoptions' => $content['disable'],

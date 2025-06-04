@@ -29,16 +29,16 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['admindirname'] = 'Adminディレクトリ';
+$string['admindirname'] = 'adminディレクトリ';
 $string['availablelangs'] = '利用可能な言語パック';
 $string['chooselanguagehead'] = '言語を選択してください。';
-$string['chooselanguagesub'] = 'インストールにのみ使用する言語を選択してください。この言語はサイトのデフォルト言語としても使用されます。後でサイト言語を変更することができます。';
+$string['chooselanguagesub'] = 'インストールに使用する言語を選択してください。この言語はサイトのデフォルト言語としても使用されますが、後で変更もできます。';
 $string['clialreadyconfigured'] = '設定ファイルconfig.phpはすでに登録されています。このサイトをインストールする場合、admin/cli/install_database.phpを使用してください。';
 $string['clialreadyinstalled'] = '設定ファイルconfig.phpはすでに登録されています。このサイトをアップグレードする場合、admin/cli/upgrade.phpを使用してください。';
-$string['cliinstallheader'] = 'Moodle {$a} コマンドラインインストールプログラム';
-$string['clitablesexist'] = 'データベーステーブルはすでに作成されています。CLIインストールを続けることはできません。';
-$string['databasehost'] = 'データベースホスト :';
-$string['databasename'] = 'データベース名 :';
+$string['cliinstallheader'] = 'Moodle {$a} コマンドラインインストレーションプログラム';
+$string['clitablesexist'] = 'データベーステーブルがすでに存在するため、CLIインストールを継続できません。';
+$string['databasehost'] = 'データベースホスト';
+$string['databasename'] = 'データベース名';
 $string['databasetypehead'] = 'データベースドライバを選択する';
 $string['dataroot'] = 'データディレクトリ';
 $string['datarootpermission'] = 'データディレクトリパーミッション';
@@ -55,7 +55,7 @@ $string['memorylimithelp'] = '<p>現在、サーバのPHPメモリ制限が {$a}
 
 <p>可能でしたら、PHPのメモリ制限上限を40M以上に設定されることをお勧めします。この設定を実現するために、いくつかの方法があります:
 <ol>
-<li>あなたがリコンパイル可能な場合、PHPを<i>--enable-memory-limit</i>オプションでコンパイルしてください。これにより、Moodle自身がメモリ制限を設定することが可能になります。</li>
+<li>あなたがリコンパイル可能な場合、PHPを<i>--enable-memory-limit</i>オプションでコンパイルしてください。これでMoodle自身がメモリ制限を設定することが可能になります。</li>
 <li>あなたがphp.iniファイルにアクセスできる場合、<b>memory_limit</b>設定を40Mのように変更することができます。php.iniファイルにアクセスできない場合、管理者に変更を依頼してください。</li>
 <li>いくつかのPHPサーバでは以下の行を含む.htaccessファイルをMoodleディレクトリに作成することができます:
 <blockquote><div>php_value memory_limit 40M</div></blockquote>
@@ -67,7 +67,7 @@ $string['pathshead'] = 'パスを確認する';
 $string['pathsrodataroot'] = 'datarootディレクトリに書き込み権がありません。';
 $string['pathsroparentdataroot'] = '親ディレクトリ ({$a->parent}) に書き込み権がありません。データディレクトリ ({$a->dataroot}) はインストーラーで作成できません。';
 $string['pathssubadmindir'] = 'まれに、コントロールパネルまたはその他の管理ツールにアクセスするためのURLとして/adminディレクトリを使用しているウェブホストがあります。残念ですが、これはMoodle管理ページの標準的なロケーションと衝突します。あなたはインストール時にadminディレクトリをリネームすることができます。ここに新しいディレクトリ名を入力してください。例: <br /> <br /><b>moodleadmin</b><br /> <br />
-これによりMoodleでのadminへのリンクを変更します。';
+これでMoodleでのadminへのリンクを変更します。';
 $string['pathssubdataroot'] = '<p>ユーザによってアップロードされたファイルコンテンツすべてをMoodleが保存するディレクトリです。</p>
 <p>このディレクトリはウェブサーバユーザ (通常「nobody」または「apache」) から読み込みおよび書き込みできる必要があります。</p>
 <p>ウェブからは直接アクセスできないようにしてください。</p>

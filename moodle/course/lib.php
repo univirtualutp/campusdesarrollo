@@ -24,7 +24,9 @@
 
 defined('MOODLE_INTERNAL') || die;
 
+use core_course\external\course_summary_exporter;
 use core_courseformat\base as course_format;
+use core\output\local\action_menu\subpanel as action_menu_subpanel;
 
 require_once($CFG->libdir.'/completionlib.php');
 require_once($CFG->libdir.'/filelib.php');
@@ -397,7 +399,7 @@ function course_integrity_check($courseid, $rawmods = null, $sections = null, $f
 function get_module_types_names($plural = false, $resetcache = false) {
     static $modnames = null;
     global $DB, $CFG;
-    if ($modnames === null || $resetcache) {
+    if ($modnames === null || empty($modnames[0]) || $resetcache) {
         $modnames = array(0 => array(), 1 => array());
         if ($allmods = $DB->get_records("modules")) {
             foreach ($allmods as $mod) {
@@ -709,12 +711,17 @@ function set_downloadcontent(int $id, bool $downloadcontent): bool {
  * has been moved to {@link set_section_visible()} which was the only place from which
  * the parameter was used.
  *
+ * If $rebuildcache is set to false, the calling code is responsible for ensuring the cache is purged
+ * and rebuilt as appropriate. Consider using this if set_coursemodule_visible is called multiple times
+ * (e.g. in a loop).
+ *
  * @param int $id of the module
  * @param int $visible state of the module
  * @param int $visibleoncoursepage state of the module on the course page
+ * @param bool $rebuildcache If true (default), perform a partial cache purge and rebuild.
  * @return bool false when the module was not found, true otherwise
  */
-function set_coursemodule_visible($id, $visible, $visibleoncoursepage = 1) {
+function set_coursemodule_visible($id, $visible, $visibleoncoursepage = 1, bool $rebuildcache = true) {
     global $DB, $CFG;
     require_once($CFG->libdir.'/gradelib.php');
     require_once($CFG->dirroot.'/calendar/lib.php');
@@ -771,8 +778,10 @@ function set_coursemodule_visible($id, $visible, $visibleoncoursepage = 1) {
         }
     }
 
-    \course_modinfo::purge_course_module_cache($cm->course, $cm->id);
-    rebuild_course_cache($cm->course, false, true);
+    if ($rebuildcache) {
+        \course_modinfo::purge_course_module_cache($cm->course, $cm->id);
+        rebuild_course_cache($cm->course, false, true);
+    }
     return true;
 }
 
@@ -1457,20 +1466,22 @@ function course_update_section($course, $section, $data) {
     // If section visibility was changed, hide the modules in this section too.
     if ($changevisibility && !empty($section->sequence)) {
         $modules = explode(',', $section->sequence);
+        $cmids = [];
         foreach ($modules as $moduleid) {
             if ($cm = get_coursemodule_from_id(null, $moduleid, $courseid)) {
+                $cmids[] = $cm->id;
                 if ($data['visible']) {
                     // As we unhide the section, we use the previously saved visibility stored in visibleold.
-                    set_coursemodule_visible($moduleid, $cm->visibleold, $cm->visibleoncoursepage);
+                    set_coursemodule_visible($moduleid, $cm->visibleold, $cm->visibleoncoursepage, false);
                 } else {
                     // We hide the section, so we hide the module but we store the original state in visibleold.
-                    set_coursemodule_visible($moduleid, 0, $cm->visibleoncoursepage);
+                    set_coursemodule_visible($moduleid, 0, $cm->visibleoncoursepage, false);
                     $DB->set_field('course_modules', 'visibleold', $cm->visible, ['id' => $moduleid]);
-                    \course_modinfo::purge_course_module_cache($cm->course, $cm->id);
                 }
                 \core\event\course_module_updated::create_from_cm($cm)->trigger();
             }
         }
+        \course_modinfo::purge_course_modules_cache($courseid, $cmids);
         rebuild_course_cache($courseid, false, true);
     }
 }
@@ -1644,6 +1655,7 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
     $modcontext = context_module::instance($mod->id);
     $courseformat = course_get_format($mod->get_course());
     $usecomponents = $courseformat->supports_components();
+    $sectioninfo = $mod->get_section_info();
 
     $editcaps = array('moodle/course:manageactivities', 'moodle/course:activityvisibility', 'moodle/role:assign');
     $dupecaps = array('moodle/backup:backuptargetimport', 'moodle/restore:restoretargetimport');
@@ -1656,12 +1668,15 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
     $hasmanageactivities = has_capability('moodle/course:manageactivities', $modcontext);
 
     if (!isset($str)) {
-        $str = get_strings(array('delete', 'move', 'moveright', 'moveleft',
-            'editsettings', 'duplicate', 'modhide', 'makeavailable', 'makeunavailable', 'modshow'), 'moodle');
-        $str->assign         = get_string('assignroles', 'role');
-        $str->groupsnone     = get_string('clicktochangeinbrackets', 'moodle', get_string("groupsnone"));
-        $str->groupsseparate = get_string('clicktochangeinbrackets', 'moodle', get_string("groupsseparate"));
-        $str->groupsvisible  = get_string('clicktochangeinbrackets', 'moodle', get_string("groupsvisible"));
+        $str = get_strings(
+            [
+                'delete', 'move', 'moveright', 'moveleft', 'editsettings',
+                'duplicate', 'availability'
+            ],
+            'moodle'
+        );
+        $str->assign = get_string('assignroles', 'role');
+        $str->groupmode = get_string('groupmode', 'group');
     }
 
     $baseurl = new moodle_url('/course/mod.php', array('sesskey' => sesskey()));
@@ -1682,7 +1697,7 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
     }
 
     // Move (only for component compatible formats).
-    if ($usecomponents) {
+    if ($hasmanageactivities && $usecomponents) {
         $actions['move'] = new action_menu_link_secondary(
             new moodle_url($baseurl, [
                 'sesskey' => sesskey(),
@@ -1753,72 +1768,16 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
 
     // Hide/Show/Available/Unavailable.
     if (has_capability('moodle/course:activityvisibility', $modcontext)) {
-        $allowstealth = !empty($CFG->allowstealth) && $courseformat->allow_stealth_module_visibility($mod, $mod->get_section_info());
-
-        $sectionvisible = $mod->get_section_info()->visible;
-        // The module on the course page may be in one of the following states:
-        // - Available and displayed on the course page ($displayedoncoursepage);
-        // - Not available and not displayed on the course page ($unavailable);
-        // - Available but not displayed on the course page ($stealth) - this can also be a visible activity in a hidden section.
-        $displayedoncoursepage = $mod->visible && $mod->visibleoncoursepage && $sectionvisible;
-        $unavailable = !$mod->visible;
-        $stealth = $mod->visible && (!$mod->visibleoncoursepage || !$sectionvisible);
-        if ($displayedoncoursepage) {
-            $actions['hide'] = new action_menu_link_secondary(
-                new moodle_url($baseurl, array('hide' => $mod->id)),
-                new pix_icon('t/hide', '', 'moodle', array('class' => 'iconsmall')),
-                $str->modhide,
-                [
-                    'class' => 'editing_hide',
-                    'data-action' => ($usecomponents) ? 'cmHide' : 'hide',
-                    'data-id' => $mod->id,
-                ]
-            );
-        } else if (!$displayedoncoursepage && $sectionvisible) {
-            // Offer to "show" only if the section is visible.
-            $actions['show'] = new action_menu_link_secondary(
-                new moodle_url($baseurl, array('show' => $mod->id)),
-                new pix_icon('t/show', '', 'moodle', array('class' => 'iconsmall')),
-                $str->modshow,
-                [
-                    'class' => 'editing_show',
-                    'data-action' => ($usecomponents) ? 'cmShow' : 'show',
-                    'data-id' => $mod->id,
-                ]
-            );
-        }
-
-        if ($stealth) {
-            // When making the "stealth" module unavailable we perform the same action as hiding the visible module.
-            $actions['hide'] = new action_menu_link_secondary(
-                new moodle_url($baseurl, array('hide' => $mod->id)),
-                new pix_icon('t/unblock', '', 'moodle', array('class' => 'iconsmall')),
-                $str->makeunavailable,
-                [
-                    'class' => 'editing_makeunavailable',
-                    'data-action' => ($usecomponents) ? 'cmHide' : 'hide',
-                    'data-sectionreturn' => $sr,
-                    'data-id' => $mod->id,
-                ]
-            );
-        } else if ($unavailable && (!$sectionvisible || $allowstealth) && $mod->has_view()) {
-            // Allow to make visually hidden module available in gradebook and other reports by making it a "stealth" module.
-            // When the section is hidden it is an equivalent of "showing" the module.
-            // Activities without the link (i.e. labels) can not be made available but hidden on course page.
-            $action = $sectionvisible ? 'stealth' : 'show';
-            if ($usecomponents) {
-                $action = 'cm' . ucfirst($action);
-            }
-            $actions[$action] = new action_menu_link_secondary(
-                new moodle_url($baseurl, array('stealth' => $mod->id)),
-                new pix_icon('t/block', '', 'moodle', array('class' => 'iconsmall')),
-                $str->makeavailable,
-                [
-                    'class' => 'editing_makeavailable',
-                    'data-action' => $action,
-                    'data-sectionreturn' => $sr,
-                    'data-id' => $mod->id,
-                ]
+        $availabilityclass = $courseformat->get_output_classname('content\\cm\\visibility');
+        /** @var core_courseformat\output\local\content\cm\visibility */
+        $availability = new $availabilityclass($courseformat, $sectioninfo, $mod);
+        $availabilitychoice = $availability->get_choice_list();
+        if ($availabilitychoice->count_options() > 1) {
+            $actions['availability'] = new action_menu_subpanel(
+                $str->availability,
+                $availabilitychoice,
+                ['class' => 'editing_availability'],
+                new pix_icon('t/hide', '', 'moodle', array('class' => 'iconsmall'))
             );
         }
     }
@@ -1850,6 +1809,19 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
         );
     }
 
+    // Groupmode.
+    if ($courseformat->show_groupmode($mod) && $usecomponents  && !$mod->coursegroupmodeforce) {
+        $groupmodeclass = $courseformat->get_output_classname('content\\cm\\groupmode');
+        /** @var core_courseformat\output\local\content\cm\groupmode */
+        $groupmode = new $groupmodeclass($courseformat, $sectioninfo, $mod);
+        $actions['groupmode'] = new action_menu_subpanel(
+            $str->groupmode,
+            $groupmode->get_choice_list(),
+            ['class' => 'editing_groupmode'],
+            new pix_icon('t/groupv', '', 'moodle', ['class' => 'iconsmall'])
+        );
+    }
+
     // Delete.
     if ($hasmanageactivities) {
         $actions['delete'] = new action_menu_link_secondary(
@@ -1857,7 +1829,7 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
             new pix_icon('t/delete', '', 'moodle', ['class' => 'iconsmall']),
             $str->delete,
             [
-                'class' => 'editing_delete',
+                'class' => 'editing_delete text-danger',
                 'data-action' => ($usecomponents) ? 'cmDelete' : 'delete',
                 'data-sectionreturn' => $sr,
                 'data-id' => $mod->id,
@@ -2283,7 +2255,7 @@ function create_course($data, $editoroptions = NULL) {
     // Trigger a course created event.
     $event = \core\event\course_created::create(array(
         'objectid' => $course->id,
-        'context' => context_course::instance($course->id),
+        'context' => $context,
         'other' => array('shortname' => $course->shortname,
             'fullname' => $course->fullname)
     ));
@@ -2310,7 +2282,34 @@ function create_course($data, $editoroptions = NULL) {
 
     // Update course tags.
     if (isset($data->tags)) {
-        core_tag_tag::set_item_tags('core', 'course', $course->id, context_course::instance($course->id), $data->tags);
+        core_tag_tag::set_item_tags('core', 'course', $course->id, $context, $data->tags);
+    }
+    // Set up communication.
+    if (core_communication\api::is_available()) {
+        // Check for default provider config setting.
+        $defaultprovider = get_config('moodlecourse', 'coursecommunicationprovider');
+        $provider = (isset($data->selectedcommunication)) ? $data->selectedcommunication : $defaultprovider;
+
+        if (!empty($provider)) {
+            // Prepare the communication api data.
+            $courseimage = course_get_courseimage($course);
+            $roomnameidentifier = $provider . 'roomname';
+            $communicationroomname = !empty($data->$roomnameidentifier) ? $data->$roomnameidentifier : $data->fullname;
+
+            // Communication api call.
+            $communication = \core_communication\api::load_by_instance(
+                context: $context,
+                component: 'core_course',
+                instancetype: 'coursecommunication',
+                instanceid: $course->id,
+                provider: $provider,
+            );
+            $communication->create_and_configure_room(
+                $communicationroomname,
+                $courseimage ?: null,
+                $data,
+            );
+        }
     }
 
     // Save custom fields if there are any of them in the form.
@@ -2432,6 +2431,145 @@ function update_course($data, $editoroptions = NULL) {
     // Set showcompletionconditions to null when completion tracking has been disabled for the course.
     if (isset($data->enablecompletion) && $data->enablecompletion == COMPLETION_DISABLED) {
         $data->showcompletionconditions = null;
+    }
+
+    // Check if provider is selected.
+    $provider = $data->selectedcommunication ?? null;
+    // If the course moved to hidden category, set provider to none.
+    if ($changesincoursecat && empty($data->visible)) {
+        $provider = 'none';
+    }
+
+    // Attempt to get the communication provider if it wasn't provided in the data.
+    if (empty($provider) && core_communication\api::is_available()) {
+        $provider = \core_communication\api::load_by_instance(
+            context: $context,
+            component: 'core_course',
+            instancetype: 'coursecommunication',
+            instanceid: $data->id,
+        )->get_provider();
+    }
+
+    // Communication api call.
+    if (!empty($provider) && core_communication\api::is_available()) {
+        // Prepare the communication api data.
+        $courseimage = course_get_courseimage($data);
+
+        // This nasty logic is here because of hide course doesn't pass anything in the data object.
+        $roomnameidentifier = $provider . 'roomname';
+        if (!empty($data->$roomnameidentifier)) {
+            $communicationroomname = $data->$roomnameidentifier;
+        } else {
+            $communicationroomname = $data->fullname ?? $oldcourse->fullname;
+        }
+
+        // Update communication room membership of enrolled users.
+        require_once($CFG->libdir . '/enrollib.php');
+        $courseusers = enrol_get_course_users($data->id);
+        $enrolledusers = [];
+
+        foreach ($courseusers as $user) {
+            $enrolledusers[] = $user->id;
+        }
+
+        // Existing communication provider.
+        $communication = \core_communication\api::load_by_instance(
+            context: $context,
+            component: 'core_course',
+            instancetype: 'coursecommunication',
+            instanceid: $data->id,
+        );
+        $existingprovider = $communication->get_provider();
+        $addusersrequired = false;
+        $enablenewprovider = false;
+        $instanceexists = true;
+
+        // Action required changes if provider has changed.
+        if ($provider !== $existingprovider) {
+            // Provider changed, flag new one to be enabled.
+            $enablenewprovider = true;
+
+            // If provider set to none, remove all the members from previous provider.
+            if ($provider === 'none' && $existingprovider !== '') {
+                $communication->remove_members_from_room($enrolledusers);
+            } else if (
+                // If previous provider was not none and current provider is not none,
+                // remove members from previous provider.
+                $existingprovider !== '' &&
+                $existingprovider !== 'none'
+            ) {
+                $communication->remove_members_from_room($enrolledusers);
+                $addusersrequired = true;
+            } else if (
+                // If previous provider was none and current provider is not none,
+                // remove members from previous provider.
+                ($existingprovider === '' || $existingprovider === 'none')
+            ) {
+                $addusersrequired = true;
+            }
+
+            // Disable previous provider, if one was enabled.
+            if ($existingprovider !== '' && $existingprovider !== 'none') {
+                $communication->update_room(
+                    active: \core_communication\processor::PROVIDER_INACTIVE,
+                );
+            }
+
+            // Switch to the newly selected provider so it can be updated.
+            if ($provider !== 'none') {
+                $communication = \core_communication\api::load_by_instance(
+                    context: $context,
+                    component: 'core_course',
+                    instancetype: 'coursecommunication',
+                    instanceid: $data->id,
+                    provider: $provider,
+                );
+
+                // Create it if it does not exist.
+                if ($communication->get_provider() === '') {
+                    $communication->create_and_configure_room(
+                        communicationroomname: $communicationroomname,
+                        avatar: $courseimage,
+                        instance: $data
+                    );
+
+                    $communication = \core_communication\api::load_by_instance(
+                        context: $context,
+                        component: 'core_course',
+                        instancetype: 'coursecommunication',
+                        instanceid: $data->id,
+                        provider: $provider,
+                    );
+
+                    $addusersrequired = true;
+                    $instanceexists = false;
+                }
+            }
+        }
+
+        if ($provider !== 'none' && $instanceexists) {
+            // Update the currently enabled provider's room data.
+            // Newly created providers do not need to run this, the create process handles it.
+            $communication->update_room(
+                active: $enablenewprovider ? \core_communication\processor::PROVIDER_ACTIVE : null,
+                communicationroomname: $communicationroomname,
+                avatar: $courseimage,
+                instance: $data,
+            );
+        }
+
+        // Complete room membership tasks if required.
+        // Newly created providers complete the user mapping but do not queue the task
+        // (it will be handled by the room creation task).
+        if ($addusersrequired) {
+            // Ensure only active users are added to the room.
+            $activeusers = array_column(
+                enrol_get_course_users(courseid: $data->id, onlyactive: true),
+                'id',
+            );
+            $enrolledusers = array_intersect($activeusers, $enrolledusers);
+            $communication->add_members_to_room($enrolledusers, $instanceexists);
+        }
     }
 
     // Update custom fields if there are any of them in the form.
@@ -3141,7 +3279,6 @@ function include_course_ajax($course, $usedmodules = array(), $enabledmodules = 
             'groupsnone',
             'groupsvisible',
             'groupsseparate',
-            'clicktochangeinbrackets',
             'markthistopic',
             'markedthistopic',
             'movesection',
@@ -3214,7 +3351,12 @@ function include_course_editor(course_format $format) {
  */
 function get_sorted_course_formats($enabledonly = false) {
     global $CFG;
-    $formats = core_component::get_plugin_list('format');
+
+    // Include both formats that exist on disk (but might not have been installed yet), and those
+    // which were installed but no longer exist on disk.
+    $installedformats = core_plugin_manager::instance()->get_installed_plugins('format');
+    $existingformats = core_component::get_plugin_list('format');
+    $formats = array_merge($installedformats, $existingformats);
 
     if (!empty($CFG->format_plugins_sortorder)) {
         $order = explode(',', $CFG->format_plugins_sortorder);
@@ -3228,7 +3370,9 @@ function get_sorted_course_formats($enabledonly = false) {
     }
     $sortedformats = array();
     foreach ($order as $formatname) {
-        if (!get_config('format_'.$formatname, 'disabled')) {
+        $component = "format_{$formatname}";
+        $componentdir = core_component::get_component_directory($component);
+        if ($componentdir !== null && !get_config($component, 'disabled')) {
             $sortedformats[] = $formatname;
         }
     }
@@ -3456,10 +3600,9 @@ function duplicate_module($course, $cm, int $sectionid = null, bool $changename 
         // triggering a lot of create/update duplicated events.
         $newcm = get_coursemodule_from_id($cm->modname, $newcmid, $cm->course);
         if ($changename) {
-            // Add ' (copy)' to duplicates. Note we don't cleanup or validate lengths here. It comes
-            // from original name that was valid, so the copy should be too.
+            // Add ' (copy)' language string postfix to duplicated module.
             $newname = get_string('duplicatedmodule', 'moodle', $newcm->name);
-            $DB->set_field($cm->modname, 'name', $newname, ['id' => $newcm->instance]);
+            set_coursemodule_name($newcm->id, $newname);
         }
 
         $section = $DB->get_record('course_sections', ['id' => $sectionid ?? $cm->section, 'course' => $cm->course]);
@@ -3476,6 +3619,23 @@ function duplicate_module($course, $cm, int $sectionid = null, bool $changename 
         // Update calendar events with the duplicated module.
         // The following line is to be removed in MDL-58906.
         course_module_update_calendar_events($newcm->modname, null, $newcm);
+
+        // Copy permission overrides to new course module.
+        $newcmcontext = context_module::instance($newcm->id);
+        $overrides = $DB->get_records('role_capabilities', ['contextid' => $cmcontext->id]);
+        foreach ($overrides as $override) {
+            $override->contextid = $newcmcontext->id;
+            unset($override->id);
+            $DB->insert_record('role_capabilities', $override);
+        }
+
+        // Copy locally assigned roles to new course module.
+        $overrides = $DB->get_records('role_assignments', ['contextid' => $cmcontext->id]);
+        foreach ($overrides as $override) {
+            $override->contextid = $newcmcontext->id;
+            unset($override->id);
+            $DB->insert_record('role_assignments', $override);
+        }
 
         // Trigger course module created event. We can trigger the event only if we know the newcmid.
         $newcm = get_fast_modinfo($cm->course)->get_cm($newcmid);
@@ -3768,7 +3928,7 @@ function core_course_drawer(): string {
     }
 
     // Show course index to users can access the course only.
-    if (!can_access_course($PAGE->course)) {
+    if (!can_access_course($PAGE->course, null, '', true)) {
         return '';
     }
 
@@ -3920,6 +4080,7 @@ function course_get_user_navigation_options($context, $course = null) {
         'participants' => false,
         'search' => false,
         'tags' => false,
+        'communication' => false,
     ];
 
     $options->blogs = !empty($CFG->enableblogs) &&
@@ -3989,6 +4150,10 @@ function course_get_user_navigation_options($context, $course = null) {
             }
         }
         $options->grades = $grades;
+    }
+
+    if (\core_communication\api::is_available()) {
+        $options->communication = has_capability('moodle/course:configurecoursecommunication', $context);
     }
 
     if (\core_competency\api::is_enabled()) {
@@ -5045,4 +5210,49 @@ function course_output_fragment_new_base_form($args) {
     ob_end_clean();
 
     return $o;
+}
+
+/**
+ * Get the current course image for the given course.
+ *
+ * @param \stdClass $course
+ * @return null|stored_file
+ */
+function course_get_courseimage(\stdClass $course): ?stored_file {
+    $courseinlist = new core_course_list_element($course);
+    foreach ($courseinlist->get_course_overviewfiles() as $file) {
+        if ($file->is_valid_image()) {
+            return $file;
+        }
+    }
+    return null;
+}
+
+/**
+ * Get course specific data for configuring a communication instance.
+ *
+ * @param integer $courseid The course id.
+ * @return array Returns course data, context and heading.
+ */
+function course_get_communication_instance_data(int $courseid): array {
+    // Do some checks and prepare instance specific data.
+    $course = get_course($courseid);
+    require_login($course);
+    $context = context_course::instance($course->id);
+    require_capability('moodle/course:configurecoursecommunication', $context);
+
+    $heading = $course->fullname;
+    $returnurl = new moodle_url('/course/view.php', ['id' => $courseid]);
+
+    return [$course, $context, $heading, $returnurl];
+}
+
+/**
+ * Update a course using communication configuration data.
+ *
+ * @param stdClass $data The data to update the course with.
+ */
+function course_update_communication_instance_data(stdClass $data): void {
+    $data->id = $data->instanceid; // For correct use in update_course.
+    update_course($data);
 }

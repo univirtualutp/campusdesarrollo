@@ -27,7 +27,7 @@ use question_bank;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \qbank_history\helper
  */
-class helper_test extends \advanced_testcase {
+final class helper_test extends \advanced_testcase {
     /**
      * @var bool|\context|\context_course $context
      */
@@ -77,14 +77,42 @@ class helper_test extends \advanced_testcase {
      */
     public function test_question_history_url() {
         $this->resetAfterTest();
-        $actionurl = helper::question_history_url($this->questiondata->questionbankentryid, $this->returnurl, $this->courseid);
+        $filter = urlencode('filters[]');
+        $actionurl = helper::question_history_url(
+            $this->questiondata->questionbankentryid,
+            $this->returnurl,
+            $this->courseid,
+            $filter,
+        );
         $params = [
             'entryid' => $this->questiondata->questionbankentryid,
             'returnurl' => $this->returnurl,
-            'courseid' => $this->courseid
+            'courseid' => $this->courseid,
+            'filter' => $filter,
         ];
         $expectedurl = new \moodle_url('/question/bank/history/history.php', $params);
         $this->assertEquals($expectedurl, $actionurl);
     }
 
+    /**
+     * Test the history action url when the filter parameter is null.
+     *
+     * @covers ::question_history_url
+     */
+    public function test_question_history_url_null_filter() {
+        $this->resetAfterTest();
+        $actionurl = helper::question_history_url(
+            $this->questiondata->questionbankentryid,
+            $this->returnurl,
+            $this->courseid,
+            null,
+        );
+        $params = [
+            'entryid' => $this->questiondata->questionbankentryid,
+            'returnurl' => $this->returnurl,
+            'courseid' => $this->courseid,
+        ];
+        $expectedurl = new \moodle_url('/question/bank/history/history.php', $params);
+        $this->assertEquals($expectedurl, $actionurl);
+    }
 }

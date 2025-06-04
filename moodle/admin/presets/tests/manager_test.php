@@ -16,6 +16,7 @@
 
 namespace core_adminpresets;
 
+use moodle_exception;
 use stdClass;
 
 /**
@@ -27,7 +28,15 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \core_adminpresets\manager
  */
-class manager_test extends \advanced_testcase {
+final class manager_test extends \advanced_testcase {
+    /**
+     * Include required libraries.
+     */
+    public static function setUpBeforeClass(): void {
+        global $CFG;
+        require_once($CFG->libdir.'/adminlib.php');
+    }
+
     /**
      * Test the behaviour of protected get_site_settings method.
      *
@@ -358,7 +367,7 @@ class manager_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function export_preset_provider(): array {
+    public static function export_preset_provider(): array {
         return [
             'Export settings and plugins, excluding sensible' => [
                 'includesensible' => false,
@@ -521,7 +530,7 @@ class manager_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function import_preset_provider(): array {
+    public static function import_preset_provider(): array {
         return [
             'Import settings from an empty file' => [
                 'filecontents' => '',
@@ -599,8 +608,26 @@ class manager_test extends \advanced_testcase {
 
         $manager = new manager();
 
-        $this->expectException(\moodle_exception::class);
+        $this->expectException(moodle_exception::class);
+        $this->expectExceptionMessage('Error deleting from database');
         $manager->delete_preset($unexistingid);
+    }
+
+    /**
+     * Test trying to delete the core/pre-defined presets
+     *
+     * @covers ::delete_preset
+     */
+    public function test_delete_preset_core(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $starterpreset = $DB->get_record('adminpresets', ['iscore' => manager::STARTER_PRESET]);
+
+        $this->expectException(moodle_exception::class);
+        $this->expectExceptionMessage('Error deleting from database');
+        (new manager())->delete_preset($starterpreset->id);
     }
 
     /**

@@ -23,29 +23,39 @@
  * code change. Full installation instructions, code adaptions and credits are included in the 'Readme.txt' file.
  *
  * @package    format_topcoll
- * @version    See the value of '$plugin->version' in version.php.
  * @copyright  &copy; 2012-onwards G J Barnard in respect to modifications of standard topics format.
- * @author     G J Barnard - {@link http://moodle.org/user/profile.php?id=442195}
- * @link       http://docs.moodle.org/en/Collapsed_Topics_course_format
- * @license    http://www.gnu.org/copyleft/gpl.html GNU Public License
- *
+ * @author     G J Barnard - {@link https://moodle.org/user/profile.php?id=442195}
+ * @link       https://docs.moodle.org/en/Collapsed_Topics_course_format
+ * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 namespace format_topcoll;
 
+/**
+ * Togglelib.
+ */
 class togglelib {
+    /** @var string TOPCOLL_TOGGLE */
+    const TOPCOLL_TOGGLE = 'topcoll_toggle';
 
     // Digits used = ":;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxy";
     // Note: An ':' is 58 Ascii so to go between six digit base 2 and this then add / subtract 58.
     // This has been chosen to avoid digits which are in the old method.
 
+    /** @var int TOGGLE_6 */
     const TOGGLE_6 = 1;
+    /** @var int TOGGLE_5 */
     const TOGGLE_5 = 2;
+    /** @var int TOGGLE_4 */
     const TOGGLE_4 = 4;
+    /** @var int TOGGLE_3 */
     const TOGGLE_3 = 8;
+    /** @var int TOGGLE_2 */
     const TOGGLE_2 = 16;
+    /** @var int TOGGLE_1 */
     const TOGGLE_1 = 32;
 
-    private $toggles;  // Toggles state.
+    /** @var string $toggles Toggles state */
+    private $toggles;
 
     /**
      * Tells us the toggle state from the DB.
@@ -216,12 +226,13 @@ class togglelib {
      * Returns test result as HTML.
      */
     public function test() {
-        $retr = '<h1>A='.self::decode_character_to_value('A').' - back:'.self::encode_value_to_character(7).'</h1><br /><p>';
+        $retr = '<h1>A=' . self::decode_character_to_value('A') . ' - back:' .
+            self::encode_value_to_character(7) . '</h1><br /><p>';
         for ($i = 0; $i < 64; $i++) {
             $curr = self::encode_value_to_character($i);
             $val = self::decode_character_to_value($curr);
             $back = self::encode_value_to_character($val);
-            $retr .= $curr.'='.$val.'='.$back.' ';
+            $retr .= $curr . '=' . $val . '=' . $back . ' ';
         }
         $retr .= '</p>';
 
@@ -229,7 +240,7 @@ class togglelib {
         $this->toggles = 'GjB'; // 001101 110000 001000 = 18 toggles.
         $retr .= '<p>Toggle string of GjB which is 001101 110000 001000 is:</p><p>';
         for ($j = 1; $j <= 18; $j++) {
-            $retr .= 'TG: '.$j.' = '.(int)$this->get_toggle_state($j).' - ';
+            $retr .= 'TG: ' . $j . ' = ' . (int)$this->get_toggle_state($j) . ' - ';
         }
         $retr .= '</p>';
         $retr .= '<p>Now set 5, 12, 15 (already set) and 18 and clear 3 and 7 is:</p><p>';
@@ -240,7 +251,7 @@ class togglelib {
         $this->set_toggle_state(3, false);
         $this->set_toggle_state(7, false);
         for ($j = 1; $j <= 18; $j++) {
-            $retr .= 'TG: '.$j.' = '.(int)$this->get_toggle_state($j).' - ';
+            $retr .= 'TG: ' . $j . ' = ' . (int)$this->get_toggle_state($j) . ' - ';
         }
         $retr .= '</p>';
 
@@ -272,12 +283,12 @@ class togglelib {
      */
     public static function clean_topcoll_param($param) {
         if (is_array($param)) {
-            throw new coding_exception('clean_topcoll_param() can not process arrays.');
+            throw new coding_exception('clean_topcoll_param() cannot process arrays.');
         } else if (is_object($param)) {
             if (method_exists($param, '__toString')) {
                 $param = $param->__toString();
             } else {
-                throw new coding_exception('clean_topcoll_param() can not process objects.');
+                throw new coding_exception('clean_topcoll_param() cannot process objects.');
             }
         }
 
@@ -291,4 +302,3 @@ class togglelib {
         return $param;
     }
 }
-

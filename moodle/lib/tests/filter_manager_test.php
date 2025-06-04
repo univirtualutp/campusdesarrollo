@@ -26,7 +26,7 @@ use filter_manager;
  * @copyright 2015 The Open University
  * @license   http://www.gnu.org/copyleft/gpl.html GNU Public License
  */
-class filter_manager_test extends \advanced_testcase {
+final class filter_manager_test extends \advanced_testcase {
 
     /**
      * Helper method to apply filters to some text and return the result.
@@ -50,7 +50,7 @@ class filter_manager_test extends \advanced_testcase {
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertMatchesRegularExpression(
             '~^<p><img class="icon emoticon" alt="smile" title="smile" ' .
-                'src="https://www.example.com/moodle/theme/image.php/_s/boost/core/1/s/smiley" /></p>$~',
+                'src="https://www.example.com/moodle/theme/image.php/boost/core/1/s/smiley" /></p>$~',
             $this->filter_text('<p>:-)</p>', array()));
     }
 
@@ -65,7 +65,7 @@ class filter_manager_test extends \advanced_testcase {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertMatchesRegularExpression('~^<p><img class="icon emoticon" alt="smile" ' .
-                'title="smile" src="https://www.example.com/moodle/theme/image.php/_s/boost/core/1/s/smiley" /></p>$~',
+                'title="smile" src="https://www.example.com/moodle/theme/image.php/boost/core/1/s/smiley" /></p>$~',
             $this->filter_text('<p>:-)</p>', array('urltolink')));
     }
 
@@ -74,7 +74,7 @@ class filter_manager_test extends \advanced_testcase {
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         filter_set_global_state('urltolink', TEXTFILTER_ON);
         $this->assertMatchesRegularExpression('~^<p><img class="icon emoticon" alt="smile" title="smile" ' .
-                'src="https://www.example.com/moodle/theme/image.php/_s/boost/core/1/s/smiley" /> http://google.com/</p>$~',
+                'src="https://www.example.com/moodle/theme/image.php/boost/core/1/s/smiley" /> http://google.com/</p>$~',
             $this->filter_text('<p>:-) http://google.com/</p>', array('glossary', 'urltolink')));
     }
 }

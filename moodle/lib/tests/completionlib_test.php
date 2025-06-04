@@ -29,7 +29,7 @@ require_once($CFG->libdir.'/completionlib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \completion_info
  */
-class completionlib_test extends advanced_testcase {
+final class completionlib_test extends advanced_testcase {
     protected $course;
     protected $user;
     protected $module1;
@@ -331,7 +331,7 @@ class completionlib_test extends advanced_testcase {
      *
      * @return array[]
      */
-    public function internal_get_state_provider() {
+    public static function internal_get_state_provider(): array {
         return [
             'View required, but not viewed yet' => [
                 COMPLETION_VIEW_REQUIRED, 1, '', COMPLETION_INCOMPLETE
@@ -392,7 +392,7 @@ class completionlib_test extends advanced_testcase {
      *
      * @return array
      */
-    public function internal_get_state_with_grade_criteria_provider() {
+    public static function internal_get_state_with_grade_criteria_provider(): array {
         return [
             "Passing grade enabled and achieve. State should be COMPLETION_COMPLETE_PASS" => [
                 [
@@ -701,7 +701,7 @@ class completionlib_test extends advanced_testcase {
      *
      * @return array[]
      */
-    public function get_data_provider() {
+    public static function get_data_provider(): array {
         return [
             'No completion record' => [
                 false, true, false, COMPLETION_INCOMPLETE
@@ -876,6 +876,7 @@ class completionlib_test extends advanced_testcase {
      * @covers ::get_completion_data
      */
     public function test_get_completion_data() {
+        $this->setAdminUser();
         $this->setup_data();
         $choicegenerator = $this->getDataGenerator()->get_plugin_generator('mod_choice');
         $choice = $choicegenerator->create_instance([
@@ -904,6 +905,11 @@ class completionlib_test extends advanced_testcase {
         $this->assertTrue(array_key_exists('coursemoduleid', $completiondatabeforeview));
         $this->assertEquals(0, $completiondatabeforeview['viewed']);
         $this->assertEquals($cm->id, $completiondatabeforeview['coursemoduleid']);
+
+        // Mark as completed before viewing it.
+        $completioninfo->update_state($cm, COMPLETION_COMPLETE, $this->user->id, true);
+        $completiondatabeforeview = $completioninfo->get_completion_data($cm->id, $this->user->id, $defaultdata);
+        $this->assertEquals(0, $completiondatabeforeview['viewed']);
 
         // Set viewed.
         $completioninfo->set_module_viewed($cm, $this->user->id);
@@ -1595,7 +1601,7 @@ class completionlib_test extends advanced_testcase {
      *
      * @return array[]
      */
-    public function get_grade_completion_provider() {
+    public static function get_grade_completion_provider(): array {
         return [
             'Grade not required' => [false, false, null, null, null],
             'Grade required, but has no grade yet' => [true, false, null, null, COMPLETION_INCOMPLETE],
@@ -1691,7 +1697,8 @@ class completionlib_test extends advanced_testcase {
      * @covers \aggregate_completions
      */
     public function test_aggregate_completions() {
-        global $DB;
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/completion/criteria/completion_criteria_activity.php');
         $this->resetAfterTest(true);
         $time = time();
 

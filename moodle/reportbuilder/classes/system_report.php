@@ -71,10 +71,25 @@ abstract class system_report extends base {
     }
 
     /**
+     * Provide default implementation of the report name. Extending classes can implement this method to provide their own name
+     *
+     * @return string
+     */
+    public static function get_name(): string {
+        $classparts = explode('\\', get_called_class());
+        $classname = end($classparts);
+
+        // Try to make human readable, capitalized and with spaces.
+        return ucfirst(str_replace('_', ' ', $classname));
+    }
+
+    /**
      * Validates access to view this report
      *
      * This is necessary to implement independently of the page that would typically embed the report because
      * subsequent pages are requested via AJAX requests, and access should be validated each time
+     *
+     * Report parameters should also be considered when implementing this method
      *
      * @return bool
      */
@@ -244,6 +259,8 @@ abstract class system_report extends base {
 
     /**
      * Return specific report parameter
+     *
+     * Capability/permission checks relating to parameters retrieved here should also be considered in your {@see can_view} method
      *
      * @param string $param
      * @param mixed $default

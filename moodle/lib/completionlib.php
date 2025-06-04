@@ -714,29 +714,15 @@ class completion_info {
         $completionstate = $this->get_core_completion_state($cminfo, $userid);
 
         if (plugin_supports('mod', $cminfo->modname, FEATURE_COMPLETION_HAS_RULES)) {
-            $response = true;
             $cmcompletionclass = activity_custom_completion::get_cm_completion_class($cminfo->modname);
             if ($cmcompletionclass) {
                 /** @var activity_custom_completion $cmcompletion */
                 $cmcompletion = new $cmcompletionclass($cminfo, $userid, $completionstate);
-                $response = $cmcompletion->get_overall_completion_state() != COMPLETION_INCOMPLETE;
-            } else {
-                // Fallback to the get_completion_state callback.
-                $cmcompletionclass = "mod_{$cminfo->modname}\\completion\\custom_completion";
-                $function = $cminfo->modname . '_get_completion_state';
-                if (!function_exists($function)) {
-                    $this->internal_systemerror("Module {$cminfo->modname} claims to support FEATURE_COMPLETION_HAS_RULES " .
-                        "but does not implement the custom completion class $cmcompletionclass which extends " .
-                        "\core_completion\activity_custom_completion.");
+                $customstate = $cmcompletion->get_overall_completion_state();
+                if ($customstate == COMPLETION_INCOMPLETE) {
+                    return $customstate;
                 }
-                debugging("*_get_completion_state() callback functions such as $function have been deprecated and should no " .
-                    "longer be used. Please implement the custom completion class $cmcompletionclass which extends " .
-                    "\core_completion\activity_custom_completion.", DEBUG_DEVELOPER);
-                $response = $function($this->course, $cm, $userid, COMPLETION_AND, $completionstate);
-            }
-
-            if (!$response) {
-                return COMPLETION_INCOMPLETE;
+                $completionstate[] = $customstate;
             }
         }
 
@@ -1664,11 +1650,12 @@ class completion_info {
                 $data->coursemoduleid = $data->cmvcoursemoduleid;
                 $data->userid = $data->cmvuserid;
             }
+            // When reseting all state in the completion, we need to keep current view state.
+            // We cannot assume the activity has been viewed, so we should check if there is any course_modules_viewed already.
+            $data->viewed = is_null($data->cmvuserid) ? 0 : 1;
+
             unset($data->cmvcoursemoduleid);
             unset($data->cmvuserid);
-
-            // When reseting all state in the completion, we need to keep current view state.
-            $data->viewed = 1;
         }
 
         return (array)$data;

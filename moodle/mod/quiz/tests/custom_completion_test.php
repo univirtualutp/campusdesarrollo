@@ -40,7 +40,7 @@ require_once($CFG->libdir . '/completionlib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \mod_quiz\completion\custom_completion
  */
-class custom_completion_test extends advanced_testcase {
+final class custom_completion_test extends advanced_testcase {
 
     /**
      * Setup function for all tests.
@@ -485,6 +485,7 @@ class custom_completion_test extends advanced_testcase {
         $moduleinfo->modulename = 'quiz';
         $moduleinfo->quizpassword = '';
         $moduleinfo->cmidnumber = '';
+        $moduleinfo->maxmarksopen = 1;
         $moduleinfo->marksopen = 1;
         $moduleinfo->visible = 1;
         $moduleinfo->visibleoncoursepage = 1;

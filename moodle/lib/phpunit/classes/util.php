@@ -104,6 +104,9 @@ class phpunit_util extends testing_util {
     public static function reset_all_data($detectchanges = false) {
         global $DB, $CFG, $USER, $SITE, $COURSE, $PAGE, $OUTPUT, $SESSION, $FULLME, $FILTERLIB_PRIVATE;
 
+        // Stop all hook redirections.
+        \core\hook\manager::get_instance()->phpunit_stop_redirections();
+
         // Stop any message redirection.
         self::stop_message_redirection();
 
@@ -261,6 +264,12 @@ class phpunit_util extends testing_util {
         if (class_exists('\core_cohort\customfield\cohort_handler')) {
             \core_cohort\customfield\cohort_handler::reset_caches();
         }
+        if (class_exists('\core_group\customfield\group_handler')) {
+            \core_group\customfield\group_handler::reset_caches();
+        }
+        if (class_exists('\core_group\customfield\grouping_handler')) {
+            \core_group\customfield\grouping_handler::reset_caches();
+        }
 
         // Clear static cache within restore.
         if (class_exists('restore_section_structure_step')) {
@@ -311,7 +320,13 @@ class phpunit_util extends testing_util {
     public static function reset_database() {
         global $DB;
 
-        if (!is_null(self::$lastdbwrites) and self::$lastdbwrites == $DB->perf_get_writes()) {
+        if (defined('PHPUNIT_ISOLATED_TEST') && PHPUNIT_ISOLATED_TEST && self::$lastdbwrites === null) {
+            // This is an isolated test and the lastdbwrites has not yet been initialised.
+            // Isolated test runs are reset by the test runner before the run starts.
+            self::$lastdbwrites = $DB->perf_get_writes();
+        }
+
+        if (!is_null(self::$lastdbwrites) && self::$lastdbwrites == $DB->perf_get_writes()) {
             return false;
         }
 
@@ -508,6 +523,7 @@ class phpunit_util extends testing_util {
         $template = <<<EOF
             <testsuite name="@component@_testsuite">
               <directory suffix="_test.php">@dir@</directory>
+              <exclude>@dir@/classes</exclude>
             </testsuite>
 
         EOF;
@@ -600,6 +616,7 @@ class phpunit_util extends testing_util {
             <testsuites>
               <testsuite name="@component@_testsuite">
                 <directory suffix="_test.php">.</directory>
+                <exclude>./classes</exclude>
               </testsuite>
             </testsuites>
           EOT;
@@ -675,8 +692,29 @@ class phpunit_util extends testing_util {
         // we need normal debugging outside of tests to find problems in our phpunit integration.
         $backtrace = debug_backtrace();
 
+        // Only for advanced_testcase, database_driver_testcase (and descendants). Others aren't
+        // able to manage the debugging sink, so any debugging has to be output normally and, hopefully,
+        // PHPUnit execution will catch that unexpected output properly.
+        $sinksupport = false;
         foreach ($backtrace as $bt) {
-            if (isset($bt['object']) and is_object($bt['object'])
+            if (isset($bt['object']) && is_object($bt['object'])
+                && (
+                    $bt['object'] instanceof advanced_testcase ||
+                    $bt['object'] instanceof database_driver_testcase)
+            ) {
+                $sinksupport = true;
+                break;
+            }
+        }
+        if (!$sinksupport) {
+            return false;
+        }
+
+        // Verify that we are inside a PHPUnit test (little bit redundant, because
+        // we already have checked above that this is an advanced/database_driver
+        // testcase, but let's keep things double safe for now).
+        foreach ($backtrace as $bt) {
+            if (isset($bt['object']) && is_object($bt['object'])
                     && $bt['object'] instanceof PHPUnit\Framework\TestCase) {
                 $debug = new stdClass();
                 $debug->message = $message;

@@ -88,6 +88,7 @@ class duration extends base {
             MINSECS => get_string('filterdateminutes', 'core_reportbuilder'),
             HOURSECS => get_string('filterdatehours', 'core_reportbuilder'),
             DAYSECS => get_string('filterdatedays', 'core_reportbuilder'),
+            WEEKSECS => get_string('filterdateweeks', 'core_reportbuilder'),
         ];
 
         $elements[] = $mform->createElement('select', "{$this->name}_unit", $unitlabel, $units);
@@ -95,7 +96,8 @@ class duration extends base {
         $mform->setDefault("{$this->name}_unit", 1);
         $mform->hideIf("{$this->name}_unit", "{$this->name}_operator", 'eq', self::DURATION_ANY);
 
-        $mform->addGroup($elements, "{$this->name}_group", '', '', false);
+        $mform->addGroup($elements, "{$this->name}_group", $this->get_header(), '', false)
+            ->setHiddenLabel(true);
     }
 
     /**

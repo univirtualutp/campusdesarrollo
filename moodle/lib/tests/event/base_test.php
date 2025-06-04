@@ -28,7 +28,7 @@ require_once(__DIR__.'/..//fixtures/event_fixtures.php');
  * @copyright  2013 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class base_test extends \advanced_testcase {
+final class base_test extends \advanced_testcase {
 
     const DEBUGGING_MSG = 'Events API using $handlers array has been deprecated in favour of Events 2 API, please use it instead.';
 
@@ -851,27 +851,6 @@ class base_test extends \advanced_testcase {
         }
 
         $this->assertSame($event->get_data(), $data);
-    }
-
-    public function test_context_not_used() {
-        // TODO: MDL-69688 - This test is far away from my understanding. It throws a
-        // "Trying to get property 'instanceid' of non-object" notice, so
-        // it's not clear for me what the test is doing. This was detected
-        // when preparing tests for PHPUnit 8 (MDL-67673) and, at the end
-        // all that was done is to move the annotation (deprecated) to
-        // explicit expectation. Still try commenting it out and you'll see
-        // the notice.
-        if (PHP_VERSION_ID >= 80000) {
-            $this->expectWarning();
-        } else {
-            $this->expectNotice();
-        }
-        $event = \core_tests\event\context_used_in_event::create(array('other' => array('sample' => 1, 'xx' => 10)));
-        $this->assertEventContextNotUsed($event);
-
-        $eventcontext = phpunit_event_mock::testable_get_event_context($event);
-        phpunit_event_mock::testable_set_event_context($event, null);
-        $this->assertEventContextNotUsed($event);
     }
 
     /**

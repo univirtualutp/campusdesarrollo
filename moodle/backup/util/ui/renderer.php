@@ -134,14 +134,14 @@ class core_backup_renderer extends plugin_renderer_base {
         $html .= $this->backup_detail_pair(get_string('backupmode', 'backup'), get_string('backupmode'.$details->mode, 'backup'));
         $html .= $this->backup_detail_pair(get_string('backupdate', 'backup'), userdate($details->backup_date));
         $html .= $this->backup_detail_pair(get_string('moodleversion', 'backup'),
-                html_writer::tag('span', $details->moodle_release, array('class' => 'moodle_release')).
-                html_writer::tag('span', '['.$details->moodle_version.']', array('class' => 'moodle_version sub-detail')));
+                html_writer::tag('span', s($details->moodle_release), array('class' => 'moodle_release')).
+                html_writer::tag('span', '[' . s($details->moodle_version) .']', array('class' => 'moodle_version sub-detail')));
         $html .= $this->backup_detail_pair(get_string('backupversion', 'backup'),
-                html_writer::tag('span', $details->backup_release, array('class' => 'moodle_release')).
-                html_writer::tag('span', '['.$details->backup_version.']', array('class' => 'moodle_version sub-detail')));
+                html_writer::tag('span', s($details->backup_release), array('class' => 'moodle_release')).
+                html_writer::tag('span', '[' . s($details->backup_version) . ']', array('class' => 'moodle_version sub-detail')));
         $html .= $this->backup_detail_pair(get_string('originalwwwroot', 'backup'),
-                html_writer::tag('span', $details->original_wwwroot, array('class' => 'originalwwwroot')).
-                html_writer::tag('span', '['.$details->original_site_identifier_hash.']', array('class' => 'sitehash sub-detail')));
+                html_writer::tag('span', s($details->original_wwwroot), array('class' => 'originalwwwroot')).
+                html_writer::tag('span', '[' . s($details->original_site_identifier_hash) . ']', array('class' => 'sitehash sub-detail')));
         if (!empty($details->include_file_references_to_external_content)) {
             $message = '';
             if (backup_general_helper::backup_is_samesite($details)) {
@@ -169,8 +169,8 @@ class core_backup_renderer extends plugin_renderer_base {
             $html .= html_writer::start_tag('div', ['class' => 'backup-section',
                     'role' => 'table', 'aria-labelledby' => 'backupcoursedetailsheader']);
             $html .= $this->output->heading(get_string('backupcoursedetails', 'backup'), 2, 'header', 'backupcoursedetailsheader');
-            $html .= $this->backup_detail_pair(get_string('coursetitle', 'backup'), $details->course->title);
-            $html .= $this->backup_detail_pair(get_string('courseid', 'backup'), $details->course->courseid);
+            $html .= $this->backup_detail_pair(get_string('coursetitle', 'backup'), format_string($details->course->title));
+            $html .= $this->backup_detail_pair(get_string('courseid', 'backup'), clean_param($details->course->courseid, PARAM_INT));
 
             // Warning users about front page backups.
             if ($details->original_course_format === 'site') {
@@ -188,7 +188,7 @@ class core_backup_renderer extends plugin_renderer_base {
                 } else {
                     continue;
                 }
-                $html .= $this->backup_detail_pair(get_string('backupcoursesection', 'backup', $section->title), $value);
+                $html .= $this->backup_detail_pair(get_string('backupcoursesection', 'backup', format_string($section->title)), $value);
                 $table = null;
                 foreach ($details->activities as $activitykey => $activity) {
                     if ($activity->sectionid != $section->sectionid) {
@@ -206,7 +206,7 @@ class core_backup_renderer extends plugin_renderer_base {
                     $icon = new image_icon('monologo', '', $activity->modulename, ['class' => 'iconlarge icon-pre']);
                     $table->data[] = array(
                         $this->output->render($icon).$name,
-                        $activity->title,
+                        format_string($activity->title),
                         ($activity->settings[$activitykey.'_userinfo']) ? $yestick : $notick,
                     );
                 }
@@ -522,7 +522,7 @@ class core_backup_renderer extends plugin_renderer_base {
     public function substage_buttons($haserrors) {
         $output  = html_writer::start_tag('div', array('continuebutton'));
         if (!$haserrors) {
-            $attrs = array('type' => 'submit', 'value' => get_string('continue'), 'class' => 'btn btn-primary');
+            $attrs = ['type' => 'submit', 'value' => get_string('continue'), 'class' => 'btn btn-primary mr-1'];
             $output .= html_writer::empty_tag('input', $attrs);
         }
         $attrs = array('type' => 'submit', 'name' => 'cancel', 'value' => get_string('cancel'), 'class' => 'btn btn-secondary');
@@ -619,10 +619,10 @@ class core_backup_renderer extends plugin_renderer_base {
      * @return string
      */
     public function render_backup_files_viewer(backup_files_viewer $viewer) {
-        global $CFG;
+
         $files = $viewer->files;
 
-        $async = async_helper::is_async_enabled();
+        $async = \async_helper::is_async_enabled();
 
         $tablehead = array(
                 get_string('filename', 'backup'),
@@ -638,16 +638,21 @@ class core_backup_renderer extends plugin_renderer_base {
         $table->attributes['class'] = 'backup-files-table generaltable';
         $table->head = $tablehead;
         $table->width = '100%';
-        $table->data = array();
+        $table->data = [];
 
         // First add in progress asynchronous backups.
         // Only if asynchronous backups are enabled.
-        // Also only render async status in correct area. Courese OR activity (not both).
-        if ($async
-                && (($viewer->filearea == 'course' && $viewer->currentcontext->contextlevel == CONTEXT_COURSE)
-                || ($viewer->filearea == 'activity' && $viewer->currentcontext->contextlevel == CONTEXT_MODULE))
-                ) {
-                    $table->data = \async_helper::get_async_backups($this, $viewer->currentcontext->instanceid);
+        if ($async) {
+            $tabledata = [];
+            $backups = \async_helper::get_async_backups($viewer->filearea, $viewer->filecontext->instanceid);
+            // For each backup get, new item name, time restore created and progress.
+            foreach ($backups as $backup) {
+                $status = $this->get_status_display($backup->status, $backup->backupid);
+                $timecreated = $backup->timecreated;
+                $tablerow = [$backup->filename, userdate($timecreated), '-', '-', '-', $status];
+                $tabledata[] = $tablerow;
+            }
+            $table->data = $tabledata;
         }
 
         // Add completed backups.
@@ -749,9 +754,12 @@ class core_backup_renderer extends plugin_renderer_base {
                     $row->attributes['class'] .= ' dimmed';
                 }
                 $id = $this->make_unique_id('restore-course');
+                $attrs = ['type' => 'radio', 'name' => 'targetid', 'value' => $course->id, 'id' => $id];
+                if ($course->id == $component->get_current_course_id()) {
+                    $attrs['checked'] = 'checked';
+                }
                 $row->cells = [
-                    html_writer::empty_tag('input', ['type' => 'radio', 'name' => 'targetid', 'value' => $course->id,
-                        'id' => $id]),
+                    html_writer::empty_tag('input', $attrs),
                     html_writer::label(
                         format_string($course->shortname, true, ['context' => context_course::instance($course->id)]),
                         $id,

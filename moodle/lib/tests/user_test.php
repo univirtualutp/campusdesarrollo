@@ -19,11 +19,12 @@ namespace core;
 /**
  * Test core_user class.
  *
+ * @covers \core_user
  * @package    core
  * @copyright  2013 Rajesh Taneja <rajesh@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class user_test extends \advanced_testcase {
+final class user_test extends \advanced_testcase {
 
     /**
      * Setup test data.
@@ -281,6 +282,36 @@ class user_test extends \advanced_testcase {
         $this->assertCount(0, $result);
         $result = \core_user::search('house@x.x');
         $this->assertCount(1, $result);
+    }
+
+    /**
+     * The search function had a bug where it failed if you have no identify fields (or only custom
+     * ones).
+     */
+    public function test_search_no_identity_fields(): void {
+        self::init_search_tests();
+
+        // Set no user identity fields.
+        set_config('showuseridentity', '');
+
+        // Set up course for test with teacher in.
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $teacher = $generator->create_user(['firstname' => 'Alberto', 'lastname' => 'Unwin',
+            'email' => 'a.unwin@x.x']);
+        $generator->enrol_user($teacher->id, $course->id, 'teacher');
+
+        // Admin user has site-wide permissions, this uses one variant of the query.
+        $this->setAdminUser();
+        $result = \core_user::search('Al');
+        $this->assertCount(1, $result);
+        $this->assertEquals('Alberto', $result[0]->firstname);
+
+        // Teacher has course-wide permissions, this uses another variant.
+        $this->setUser($teacher);
+        $result = \core_user::search('Al');
+        $this->assertCount(1, $result);
+        $this->assertEquals('Alberto', $result[0]->firstname);
     }
 
     /**
@@ -812,5 +843,168 @@ class user_test extends \advanced_testcase {
         $CFG->sitepolicy = 'https://example.com';
         $this->assertFalse(\core_user::awaiting_action($admin));
         $this->assertTrue(\core_user::awaiting_action($manager));
+    }
+
+    /**
+     * Test for function to get user details.
+     *
+     * @covers \core_user::get_fullname
+     */
+    public function test_display_name() {
+        $this->resetAfterTest();
+
+        $user = $this->getDataGenerator()->create_user(['firstname' => 'John', 'lastname' => 'Doe']);
+        $context = \context_system::instance();
+
+        // Show real name as the force names config are not set.
+        $this->assertEquals('John Doe', \core_user::get_fullname($user, $context));
+
+        // With override, still show real name.
+        $options = ['override' => true];
+        $this->assertEquals('John Doe', \core_user::get_fullname($user, $context, $options));
+
+        // Set the force names config.
+        set_config('forcefirstname', 'Bruce');
+        set_config('forcelastname', 'Simpson');
+
+        // Show forced names.
+        $this->assertEquals('Bruce Simpson', \core_user::get_fullname($user, $context));
+
+        // With override, show real name.
+        $options = ['override' => true];
+        $this->assertEquals('John Doe', \core_user::get_fullname($user, $context, $options));
+    }
+
+    /**
+     * Test for function to get user details.
+     *
+     * @covers \core_user::get_profile_url
+     */
+    public function test_display_profile_url() {
+        $this->resetAfterTest();
+
+        $user = $this->getDataGenerator()->create_user(['firstname' => 'John', 'lastname' => 'Doe']);
+
+        // Display profile url at site context.
+        $this->assertEquals("https://www.example.com/moodle/user/profile.php?id={$user->id}",
+            \core_user::get_profile_url($user)->out());
+
+        // Display profile url at course context.
+        $course = $this->getDataGenerator()->create_course();
+        $coursecontext = \context_course::instance($course->id);
+        $this->assertEquals("https://www.example.com/moodle/user/view.php?id={$user->id}&amp;course={$course->id}",
+            \core_user::get_profile_url($user, $coursecontext));
+
+        // Throw error if userid is invalid.
+        unset($user->id);
+        $this->expectException(\coding_exception::class);
+        $this->expectExceptionMessage('User id is required when displaying profile url.');
+        \core_user::get_profile_url($user, $coursecontext);
+    }
+
+    /**
+     * Test for function to get user details.
+     *
+     * @covers \core_user::get_profile_picture
+     */
+    public function test_display_profile_picture() {
+        global $OUTPUT, $CFG;
+        $this->resetAfterTest();
+
+        $user1 = $this->getDataGenerator()->create_user(['firstname' => 'John', 'lastname' => 'Doe']);
+        $user2 = $this->getDataGenerator()->create_user(['picture' => 1]);
+
+        // Display profile picture.
+        $context = \context_system::instance();
+        // No image, show initials.
+        $this->assertStringContainsString(
+            "<span class=\"userinitials size-35\" title=\"John Doe\" aria-label=\"John Doe\" role=\"img\">JD</span></a>",
+            $OUTPUT->render(\core_user::get_profile_picture($user1, $context)));
+        // With Image.
+        $expectedimagesrc = $CFG->wwwroot . '/pluginfile.php/' . \context_user::instance($user2->id)->id .
+            '/user/icon/boost/f2?rev=1';
+        $this->assertStringContainsString($expectedimagesrc,
+            $OUTPUT->render(\core_user::get_profile_picture($user2, $context)));
+
+        // Display profile picture with options.
+        $options = ['size' => 50, 'includefullname' => true];
+        $this->assertStringContainsString(
+            "<span class=\"userinitials size-50\" title=\"John Doe\" aria-label=\"John Doe\" role=\"img\">JD</span>John Doe</a>",
+            $OUTPUT->render(\core_user::get_profile_picture($user1, $context, $options)));
+
+        // Display profile picture with options, no link.
+        $options = ['link' => false];
+        $this->assertEquals(
+            "<span class=\"userinitials size-35\" title=\"John Doe\" aria-label=\"John Doe\" role=\"img\">JD</span>",
+            $OUTPUT->render(\core_user::get_profile_picture($user1, $context, $options)));
+    }
+
+    /**
+     * Test that user with Letter avatar respect language preference.
+     *
+     * @param array $userdata
+     * @param string $fullnameconfig
+     * @param string $expected
+     * @return void
+     * @covers       \core_user::get_initials
+     * @dataProvider user_name_provider
+     */
+    public function test_get_initials(array $userdata, string $fullnameconfig, string $expected): void {
+        $this->resetAfterTest();
+        // Create a user.
+        $page = new \moodle_page();
+        $page->set_url('/user/profile.php');
+        $page->set_context(\context_system::instance());
+        $renderer = $page->get_renderer('core');
+        $user1 =
+            $this->getDataGenerator()->create_user(
+                array_merge(
+                    ['picture' => 0, 'email' => 'user1@example.com'],
+                    $userdata
+                )
+            );
+        set_config('fullnamedisplay', $fullnameconfig);
+        $initials = \core_user::get_initials($user1);
+        $this->assertEquals($expected, $initials);
+    }
+
+    /**
+     * Provider of user configuration for testing initials rendering
+     *
+     * @return array[]
+     */
+    public static function user_name_provider(): array {
+        return [
+            'simple user' => [
+                'user' => ['firstname' => 'first', 'lastname' => 'last'],
+                'fullnamedisplay' => 'language',
+                'expected' => 'fl',
+            ],
+            'simple user with lastname firstname in language settings' => [
+                'user' => ['firstname' => 'first', 'lastname' => 'last'],
+                'fullnamedisplay' => 'lastname firstname',
+                'expected' => 'lf',
+            ],
+            'simple user with no surname' => [
+                'user' => ['firstname' => '', 'lastname' => 'L'],
+                'fullnamedisplay' => 'language',
+                'expected' => 'L',
+            ],
+            'simple user with a middle name' => [
+                'user' => ['firstname' => 'f', 'lastname' => 'l', 'middlename' => 'm'],
+                'fullnamedisplay' => 'middlename lastname',
+                'expected' => 'ml',
+            ],
+            'user with a middle name & fullnamedisplay contains 3 names' => [
+                'user' => ['firstname' => 'first', 'lastname' => 'last', 'middlename' => 'middle'],
+                'fullnamedisplay' => 'firstname middlename lastname',
+                'expected' => 'fl',
+            ],
+            'simple user with a namefield consisting of one element' => [
+                'user' => ['firstname' => 'first', 'lastname' => 'last'],
+                'fullnamedisplay' => 'lastname',
+                'expected' => 'l',
+            ],
+        ];
     }
 }

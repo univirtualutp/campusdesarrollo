@@ -94,7 +94,7 @@ class system_report_table extends base_report_table {
         $this->is_downloading($parameters['download'] ?? null, $this->report->get_downloadfilename());
 
         // Retrieve all report columns. If we are downloading the report, remove as required.
-        $columns = $this->report->get_columns();
+        $columns = $this->report->get_active_columns();
         if ($this->is_downloading()) {
             $columns = array_diff_key($columns,
                 array_flip($this->report->get_exclude_columns_for_download()));
@@ -298,5 +298,19 @@ class system_report_table extends base_report_table {
         }
 
         return '';
+    }
+
+    /**
+     * Check if the user has the capability to access this table.
+     *
+     * @return bool Return true if capability check passed.
+     */
+    public function has_capability(): bool {
+        try {
+            $this->report->require_can_view();
+            return true;
+        } catch (\core_reportbuilder\report_access_exception $e) {
+            return false;
+        }
     }
 }

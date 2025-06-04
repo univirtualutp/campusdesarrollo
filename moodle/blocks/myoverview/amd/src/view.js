@@ -32,6 +32,7 @@ import SELECTORS from 'block_myoverview/selectors';
 import * as PagedContentEvents from 'core/paged_content_events';
 import * as Aria from 'core/aria';
 import {debounce} from 'core/utils';
+import {setUserPreference} from 'core_user/repository';
 
 const TEMPLATES = {
     COURSES_CARDS: 'block_myoverview/view-cards',
@@ -343,14 +344,9 @@ const setCourseHiddenState = (courseId, status) => {
     if (status === false) {
         status = null;
     }
-    return Repository.updateUserPreferences({
-        preferences: [
-            {
-                type: 'block_myoverview_hidden_course_' + courseId,
-                value: status
-            }
-        ]
-    });
+
+    return setUserPreference(`block_myoverview_hidden_course_${courseId}`, status)
+        .catch(Notification.exception);
 };
 
 /**
@@ -551,7 +547,11 @@ const itemsPerPageFunc = (pagingLimit, root) => {
     // Filter out all pagination options which are too large for the amount of courses user is enrolled in.
     const totalCourseCount = parseInt(root.find(SELECTORS.courseView.region).attr('data-totalcoursecount'), 10);
     return itemsPerPage.filter(pagingOption => {
-        return pagingOption.value < totalCourseCount || pagingOption.value === 0;
+        if (pagingOption.value === 0 && totalCourseCount > 100) {
+            // To minimise performance issues, do not show the "All" option if the user is enrolled in more than 100 courses.
+            return false;
+        }
+        return pagingOption.value < totalCourseCount;
     });
 };
 

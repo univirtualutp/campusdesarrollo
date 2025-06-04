@@ -791,9 +791,17 @@ function initialise_cfg() {
 function initialise_local_config_cache() {
     global $CFG;
 
-    $bootstrapcachefile = $CFG->localcachedir . '/bootstrap.php';
+    $bootstraplocalfile = $CFG->localcachedir . '/bootstrap.php';
+    $bootstrapsharedfile = $CFG->cachedir . '/bootstrap.php';
 
-    if (!empty($CFG->siteidentifier) && !file_exists($bootstrapcachefile)) {
+    if (!is_readable($bootstraplocalfile) && is_readable($bootstrapsharedfile)) {
+        // If we don't have a local cache but do have a shared cache then clone it,
+        // for example when scaling up new front ends.
+        make_localcache_directory('', true);
+        copy($bootstrapsharedfile, $bootstraplocalfile);
+    }
+
+    if (!empty($CFG->siteidentifier) && !file_exists($bootstrapsharedfile)) {
         $contents = "<?php
 // ********** This file is generated DO NOT EDIT **********
 \$CFG->siteidentifier = " . var_export($CFG->siteidentifier, true) . ";
@@ -804,10 +812,15 @@ if (\$CFG->bootstraphash === hash_local_config_cache() && !defined('SYSCONTEXTID
 }
 ";
 
-        $temp = $bootstrapcachefile . '.tmp' . uniqid();
+        // Create the central bootstrap first.
+        $temp = $bootstrapsharedfile . '.tmp' . uniqid();
         file_put_contents($temp, $contents);
         @chmod($temp, $CFG->filepermissions);
-        rename($temp, $bootstrapcachefile);
+        rename($temp, $bootstrapsharedfile);
+
+        // Then prewarm the local cache as well.
+        make_localcache_directory('', true);
+        copy($bootstrapsharedfile, $bootstraplocalfile);
     }
 }
 
@@ -888,7 +901,13 @@ function initialise_fullme() {
                 throw new moodle_exception('requirecorrectaccess', 'error', '', null,
                     'You called ' . $calledurl .', you should have called ' . $correcturl);
             }
-            redirect($CFG->wwwroot, get_string('wwwrootmismatch', 'error', $CFG->wwwroot), 3);
+            $rfullpath = $rurl['fullpath'];
+            // Check that URL is under $CFG->wwwroot.
+            if (strpos($rfullpath, $wwwroot['path']) === 0) {
+                $rfullpath = substr($rurl['fullpath'], strlen($wwwroot['path']) - 1);
+                $rfullpath = (new moodle_url($rfullpath))->out(false);
+            }
+            redirect($rfullpath, get_string('wwwrootmismatch', 'error', $CFG->wwwroot), 3);
         }
     }
 
@@ -920,9 +939,16 @@ function initialise_fullme() {
         $_SERVER['SERVER_PORT'] = 443; // Assume default ssl port for the proxy.
     }
 
-    // Hopefully this will stop all those "clever" admins trying to set up moodle
-    // with two different addresses in intranet and Internet.
-    // Port forwarding is still allowed!
+    // Using Moodle in "reverse proxy" mode, it's expected that the HTTP Host Moodle receives is different
+    // from the wwwroot configured host. Those URLs being identical could be the consequence of various
+    // issues, including:
+    // - Intentionally trying to set up moodle with 2 distinct addresses for intranet and Internet: this
+    //   configuration is unsupported and will lead to bigger problems down the road (the proper solution
+    //   for this is adjusting the network routes, and avoid relying on the application for network concerns).
+    // - Misconfiguration of the reverse proxy that would be forwarding the Host header: while it is
+    //   standard in many cases that the reverse proxy would do that, in our case, the reverse proxy
+    //   must leave the Host header pointing to the internal name of the server.
+    // Port forwarding is allowed, though.
     if (!empty($CFG->reverseproxy) && $rurl['host'] === $wwwroot['host'] && (empty($wwwroot['port']) || $rurl['port'] === $wwwroot['port'])) {
         throw new \moodle_exception('reverseproxyabused', 'error');
     }
@@ -1195,7 +1221,6 @@ function init_performance_info() {
     global $PERF, $CFG, $USER;
 
     $PERF = new stdClass();
-    $PERF->logwrites = 0;
     if (function_exists('microtime')) {
         $PERF->starttime = microtime();
     }
@@ -1451,7 +1476,7 @@ function redirect_if_major_upgrade_required() {
  *
  * To be inserted in the core functions that can not be called by pluigns during upgrade.
  * Core upgrade should not use any API functions at all.
- * See {@link http://docs.moodle.org/dev/Upgrade_API#Upgrade_code_restrictions}
+ * See {@link https://moodledev.io/docs/guides/upgrade#upgrade-code-restrictions}
  *
  * @throws moodle_exception if executed from inside of upgrade script and $warningonly is false
  * @param bool $warningonly if true displays a warning instead of throwing an exception
@@ -2196,7 +2221,7 @@ function require_phpunit_isolation(): void {
         return;
     }
 
-    if (defined('PHPUNIT_ISOLATED_TEST')) {
+    if (defined('PHPUNIT_ISOLATED_TEST') && PHPUNIT_ISOLATED_TEST) {
         // Already isolated.
         return;
     }

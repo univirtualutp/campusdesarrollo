@@ -20,6 +20,7 @@ defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 require_once($CFG->dirroot.'/user/lib.php');
+require_once($CFG->dirroot.'/lib/authlib.php');
 
 /**
  * Unit tests for user lib api.
@@ -29,7 +30,7 @@ require_once($CFG->dirroot.'/user/lib.php');
  * @copyright  2013 Rajesh Taneja <rajesh@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class userlib_test extends \advanced_testcase {
+final class userlib_test extends \advanced_testcase {
     /**
      * Test user_get_user_details_courses
      */
@@ -386,7 +387,7 @@ class userlib_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function data_create_user_invalid_username() {
+    public static function data_create_user_invalid_username(): array {
         return [
             'empty_string' => [
                 '',
@@ -941,30 +942,33 @@ class userlib_test extends \advanced_testcase {
 
         // Get student details with required fields.
         $result = user_get_user_details($student1, $course, array('id', 'fullname', 'timezone', 'city', 'address', 'idnumber'));
-        $this->assertCount(4, $result); // Ensure address (never returned), idnumber (identity field) are not returned here.
+        $this->assertCount(5, $result); // Ensure idnumber (identity field) is not returned here.
         $this->assertEquals($student1->id, $result['id']);
         $this->assertEquals($student1fullname, $result['fullname']);
         $this->assertEquals($student1->timezone, $result['timezone']);
         $this->assertEquals($student1->city, $result['city']);
+        $this->assertEquals($student1->address, $result['address']);
 
         // Set new identity fields and hidden fields and try to retrieve them without permission.
         $CFG->showuseridentity = $CFG->showuseridentity . ',idnumber';
         $CFG->hiddenuserfields = 'city';
         $result = user_get_user_details($student1, $course, array('id', 'fullname', 'timezone', 'city', 'address', 'idnumber'));
-        $this->assertCount(3, $result); // Ensure address, city and idnumber are not returned here.
+        $this->assertCount(4, $result); // Ensure city and idnumber are not returned here.
         $this->assertEquals($student1->id, $result['id']);
         $this->assertEquals($student1fullname, $result['fullname']);
         $this->assertEquals($student1->timezone, $result['timezone']);
+        $this->assertEquals($student1->address, $result['address']);
 
         // Now, teacher should have permission to see the idnumber and city fields.
         $this->setUser($teacher);
         $result = user_get_user_details($student1, $course, array('id', 'fullname', 'timezone', 'city', 'address', 'idnumber'));
-        $this->assertCount(5, $result); // Ensure address is not returned here.
+        $this->assertCount(6, $result);
         $this->assertEquals($student1->id, $result['id']);
         $this->assertEquals($student1fullname, $result['fullname']);
         $this->assertEquals($student1->timezone, $result['timezone']);
         $this->assertEquals($student1->idnumber, $result['idnumber']);
         $this->assertEquals($student1->city, $result['city']);
+        $this->assertEquals($student1->address, $result['address']);
 
         // And admins can see anything.
         $this->setAdminUser();

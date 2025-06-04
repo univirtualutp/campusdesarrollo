@@ -14,15 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Test for content bank contenttype class.
- *
- * @package    core_contentbank
- * @category   test
- * @copyright  2020 Amaia Anabitarte <amaia@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace core_contentbank;
 
 use stdClass;
@@ -40,7 +31,7 @@ use contenttype_testable\contenttype as contenttype;
  * @coversDefaultClass \core_contentbank\contenttype
  *
  */
-class contenttype_test extends \advanced_testcase {
+final class contenttype_test extends \advanced_testcase {
 
     /** @var int Identifier for the manager role. */
     protected $managerroleid;
@@ -104,6 +95,8 @@ class contenttype_test extends \advanced_testcase {
      * @covers ::get_icon
      */
     public function test_get_icon() {
+        global $CFG;
+
         $this->resetAfterTest();
 
         $systemcontext = \context_system::instance();
@@ -111,8 +104,10 @@ class contenttype_test extends \advanced_testcase {
         $record = new stdClass();
         $record->name = 'New content';
         $content = $testable->create_content($record);
-        $icon = $testable->get_icon($content);
-        $this->assertStringContainsString('archive', $icon);
+        $this->assertEquals(
+            "{$CFG->wwwroot}/theme/image.php/boost/core/1/f/unknown",
+            $testable->get_icon($content),
+        );
     }
 
     /**
@@ -245,7 +240,7 @@ class contenttype_test extends \advanced_testcase {
      *
      * @return  array
      */
-    public function upload_content_provider() {
+    public static function upload_content_provider(): array {
         return [
             'With record' => [true],
             'Without record' => [false],
@@ -454,7 +449,7 @@ class contenttype_test extends \advanced_testcase {
      *
      * @return  array
      */
-    public function rename_content_provider() {
+    public static function rename_content_provider(): array {
         return [
             'Standard name' => ['New name', 'New name', true],
             'Name with digits' => ['Today is 17/04/2017', 'Today is 17/04/2017', true],

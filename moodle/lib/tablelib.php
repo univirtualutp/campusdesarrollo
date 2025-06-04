@@ -51,6 +51,7 @@ define('TABLE_P_BOTTOM', 2);
  */
 define('TABLE_SHOW_ALL_PAGE_SIZE', 5000);
 
+use core\dataformat;
 use core_table\local\filter\filterset;
 
 /**
@@ -79,6 +80,12 @@ class flexible_table {
     var $column_suppress = array();
     var $column_nosort   = array('userpic');
     private $column_textsort = array();
+
+    /**
+     * @var array The sticky attribute of each table column.
+     */
+    protected $columnsticky = [];
+
     /** @var boolean Stores if setup has already been called on this flixible table. */
     var $setup           = false;
     var $baseurl         = NULL;
@@ -172,6 +179,16 @@ class flexible_table {
     protected $resetting;
 
     /**
+     * @var string $caption The caption of table
+     */
+    public $caption;
+
+    /**
+     * @var array $captionattributes The caption attributes of table
+     */
+    public $captionattributes;
+
+    /**
      * @var filterset The currently applied filerset
      * This is required for dynamic tables, but can be used by other tables too if desired.
      */
@@ -194,6 +211,21 @@ class flexible_table {
             TABLE_VAR_RESET  => 'treset',
             TABLE_VAR_DIR    => 'tdir',
         );
+
+        static $notified = [];
+        if (!(defined('AJAX_SCRIPT') && AJAX_SCRIPT) &&
+                $this instanceof \core_table\dynamic &&
+                !method_exists($this, 'has_capability') &&
+                empty($notified[get_class($this)])) {
+            // Classes implementing \core_table\dynamic must have a method has_capability():bool .
+            // This will be enforced in Moodle 4.5.
+            \core\notification::add(
+                get_string('codingerror', 'debug',
+                'Error in class '.get_class($this).'. Some functionality may be available to admins only.'),
+                \core\notification::WARNING
+            );
+            $notified[get_class($this)] = true;
+        }
     }
 
     /**
@@ -204,10 +236,10 @@ class flexible_table {
      * for you (even if the param is '', which means no download this time.
      * Also you can call this method with no params to get the current set
      * download type.
-     * @param string $download dataformat type. One of csv, xhtml, ods, etc
+     * @param string|null $download type of dataformat for export.
      * @param string $filename filename for downloads without file extension.
      * @param string $sheettitle title for downloaded data.
-     * @return string download dataformat type. One of csv, xhtml, ods, etc
+     * @return string download dataformat type.
      */
     function is_downloading($download = null, $filename='', $sheettitle='') {
         if ($download!==null) {
@@ -431,6 +463,17 @@ class flexible_table {
     }
 
     /**
+     * Sets a sticky attribute to a column.
+     * @param string $column Column name
+     * @param bool $sticky
+     */
+    public function column_sticky(string $column, bool $sticky = true): void {
+        if (isset($this->columnsticky[$column])) {
+            $this->columnsticky[$column] = $sticky == true ? ' sticky-column' : '';
+        }
+    }
+
+    /**
      * Sets the given $attributes to $this->columnsattributes.
      * Column attributes will be added to every cell in the column.
      *
@@ -468,6 +511,7 @@ class flexible_table {
         $this->columns = array();
         $this->column_style = array();
         $this->column_class = array();
+        $this->columnsticky = [];
         $this->columnsattributes = [];
         $colnum = 0;
 
@@ -475,6 +519,7 @@ class flexible_table {
             $this->columns[$column]         = $colnum++;
             $this->column_style[$column]    = array();
             $this->column_class[$column]    = '';
+            $this->columnsticky[$column]    = '';
             $this->columnsattributes[$column] = [];
             $this->column_suppress[$column] = false;
         }
@@ -1150,7 +1195,7 @@ class flexible_table {
             }
 
             $attributes = [
-                'class' => "cell c{$index}" . $this->column_class[$column],
+                'class' => "cell c{$index}" . $this->column_class[$column] . $this->columnsticky[$column],
                 'id' => "{$rowid}_c{$index}",
                 'style' => $this->make_styles_string($this->column_style[$column]),
             ];
@@ -1332,7 +1377,7 @@ class flexible_table {
             }
 
             $attributes = array(
-                'class' => 'header c' . $index . $this->column_class[$column],
+                'class' => 'header c' . $index . $this->column_class[$column] . $this->columnsticky[$column],
                 'scope' => 'col',
             );
             if ($this->headers[$index] === NULL) {
@@ -1839,8 +1884,35 @@ class flexible_table {
         // Start of main data table
 
         echo html_writer::start_tag('div', array('class' => 'no-overflow'));
-        echo html_writer::start_tag('table', $this->attributes);
+        echo html_writer::start_tag('table', $this->attributes) . $this->render_caption();
+    }
 
+    /**
+     * This function set caption for table.
+     *
+     * @param string $caption Caption of table.
+     * @param array|null $captionattributes Caption attributes of table.
+     */
+    public function set_caption(string $caption, ?array $captionattributes): void {
+        $this->caption = $caption;
+        $this->captionattributes = $captionattributes;
+    }
+
+    /**
+     * This function renders a table caption.
+     *
+     * @return string $output Caption of table.
+     */
+    public function render_caption(): string {
+        if ($this->caption === null) {
+            return '';
+        }
+
+        return html_writer::tag(
+            'caption',
+            $this->caption,
+            $this->captionattributes,
+        );
     }
 
     /**
@@ -2011,6 +2083,8 @@ class table_sql extends flexible_table {
     }
 
     /**
+     * Build the table from the fetched data.
+     *
      * Take the data returned from the db_query and go through all the rows
      * processing each col using either col_{columnname} method or other_cols
      * method or if other_cols returns NULL then put the data straight into the
@@ -2019,18 +2093,13 @@ class table_sql extends flexible_table {
      * After calling this function, don't forget to call close_recordset.
      */
     public function build_table() {
-
-        if ($this->rawdata instanceof \Traversable && !$this->rawdata->valid()) {
-            return;
-        }
         if (!$this->rawdata) {
             return;
         }
 
         foreach ($this->rawdata as $row) {
             $formattedrow = $this->format_row($row);
-            $this->add_data_keyed($formattedrow,
-                $this->get_row_class($row));
+            $this->add_data_keyed($formattedrow, $this->get_row_class($row));
         }
     }
 
@@ -2265,11 +2334,7 @@ class table_dataformat_export_format extends table_default_export_format_parent 
             throw new coding_exception("Output can not be buffered before instantiating table_dataformat_export_format");
         }
 
-        $classname = 'dataformat_' . $dataformat . '\writer';
-        if (!class_exists($classname)) {
-            throw new coding_exception("Unable to locate dataformat/$dataformat/classes/writer.php");
-        }
-        $this->dataformat = new $classname;
+        $this->dataformat = dataformat::get_format_instance($dataformat);
 
         // The dataformat export time to first byte could take a while to generate...
         set_time_limit(0);

@@ -24,7 +24,7 @@ namespace core;
  * @copyright  2012 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class htmlpurifier_test extends \basic_testcase {
+final class htmlpurifier_test extends \basic_testcase {
 
     /**
      * Verify _blank target is allowed.
@@ -353,7 +353,7 @@ class htmlpurifier_test extends \basic_testcase {
     /**
      * Test cases for the test_media_tags test.
      */
-    public function media_tags_provider() {
+    public static function media_tags_provider(): array {
         // Takes an array of attributes, then generates a test for each of them.
         $generatetestcases = function($prefix, array $attrs, array $templates) {
             return array_reduce($attrs, function($carry, $attr) use ($prefix, $templates) {
@@ -426,6 +426,12 @@ class htmlpurifier_test extends \basic_testcase {
                 '<video %1$s>Did not work <a href="http://example.com/prettygood.mp4">click here to download</a></video>',
                 '<div class="text_to_html"><video %1$s>Did not work <a href="http://example.com/prettygood.mp4">' .
                 'click here to download</a></video></div>'
+            ]) + $generatetestcases('Video inside an inline tag', $videoattrs + ['src="http://example.com/prettygood.mp4'], [
+                '<em><video %1$s>Oh, that\'s pretty bad 😦</video></em>',
+                '<div class="text_to_html"><em><video %1$s>Oh, that\'s pretty bad 😦</video></em></div>'
+            ]) + $generatetestcases('Video inside a block tag', $videoattrs + ['src="http://example.com/prettygood.mp4'], [
+                '<p><video %1$s>Oh, that\'s pretty bad 😦</video></p>',
+                '<div class="text_to_html"><p><video %1$s>Oh, that\'s pretty bad 😦</video></p></div>'
             ]) + $generatetestcases('Source tag without video or audio', $videoattrs, [
                 'some text <source src="http://example.com/getup.wav" type="audio/wav"> the end',
                 '<div class="text_to_html">some text  the end</div>'

@@ -38,7 +38,7 @@ require_once("{$CFG->dirroot}/webservice/tests/helpers.php");
  * @copyright   2021 Paul Holden <paulh@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class delete_test extends externallib_advanced_testcase {
+final class delete_test extends externallib_advanced_testcase {
 
     /**
      * Text execute method
@@ -84,7 +84,7 @@ class delete_test extends externallib_advanced_testcase {
         /** @var core_reportbuilder_generator $generator */
         $generator = $this->getDataGenerator()->get_plugin_generator('core_reportbuilder');
 
-        $report = $generator->create_report(['name' => 'My report', 'source' => users::class]);
+        $report = $generator->create_report(['name' => 'My report', 'source' => users::class, 'default' => false]);
         $condition = $generator->create_condition(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:email']);
 
         $user = $this->getDataGenerator()->create_user();

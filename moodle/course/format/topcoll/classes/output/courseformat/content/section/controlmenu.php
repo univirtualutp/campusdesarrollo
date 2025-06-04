@@ -18,11 +18,10 @@
  * Contains the default section controls output class.
  *
  * @package    format_topcoll
- * @version    See the value of '$plugin->version' in version.php.
  * @copyright  &copy; 2021-onwards G J Barnard in respect to modifications of standard topics format.
- * @author     G J Barnard - {@link http://moodle.org/user/profile.php?id=442195}
- * @copyright 2020 Ferran Recio <ferran@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @author     G J Barnard - {@link https://moodle.org/user/profile.php?id=442195}
+ * @copyright  2020 Ferran Recio <ferran@moodle.com>
+ * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace format_topcoll\output\courseformat\content\section;
@@ -43,7 +42,6 @@ use stdClass;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class controlmenu extends controlmenu_base {
-
     /** @var course_format the course format class */
     protected $format;
 
@@ -120,8 +118,10 @@ class controlmenu extends controlmenu_base {
         $tcsettings = $format->get_settings();
 
         $controls = [];
-        if ((($tcsettings['layoutstructure'] == 1) || ($tcsettings['layoutstructure'] == 4)) &&
-            $section->section && has_capability('moodle/course:setcurrentsection', $coursecontext)) {
+        if (
+            (($tcsettings['layoutstructure'] == 1) || ($tcsettings['layoutstructure'] == 4)) &&
+            $section->section && has_capability('moodle/course:setcurrentsection', $coursecontext)
+        ) {
             if ($course->marker == $section->section) {  // Show the "light globe" on/off.
                 $url->param('marker', 0);
                 $highlightoff = get_string('highlightoff');
@@ -132,7 +132,7 @@ class controlmenu extends controlmenu_base {
                     'pixattr' => ['class' => ''],
                     'attr' => [
                         'class' => 'editing_highlight',
-                        'data-action' => 'removemarker'
+                        'data-action' => 'removemarker',
                     ],
                 ];
             } else {
@@ -145,7 +145,7 @@ class controlmenu extends controlmenu_base {
                     'pixattr' => ['class' => ''],
                     'attr' => [
                         'class' => 'editing_highlight',
-                        'data-action' => 'setmarker'
+                        'data-action' => 'setmarker',
                     ],
                 ];
             }

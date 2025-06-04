@@ -35,8 +35,8 @@ require_once($CFG->dirroot . '/question/engine/tests/helpers.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers \qtype_multianswer_question
  */
-class question_test extends \advanced_testcase {
-    public function test_get_expected_data() {
+final class question_test extends \advanced_testcase {
+    public function test_get_expected_data(): void {
         $question = \test_question_maker::make_question('multianswer');
         $this->assertEquals(array('sub1_answer' => PARAM_RAW_TRIMMED,
                 'sub2_answer' => PARAM_RAW), $question->get_expected_data());
@@ -348,6 +348,27 @@ class question_test extends \advanced_testcase {
 
         $this->assertEquals($expected,
                 $newquestion->update_attempt_state_data_for_new_version($oldstep, $question));
+    }
+
+    /**
+     * Test functions work with zero weight.
+     * This is used for testing the MDL-77378 bug.
+     */
+    public function test_zeroweight() {
+        $this->resetAfterTest();
+        /** @var \qtype_multianswer_question $question */
+        $question = \test_question_maker::make_question('multianswer', 'zeroweight');
+        $question->start_attempt(new question_attempt_step(), 1);
+
+        $this->assertEquals([null, question_state::$gradedright], $question->grade_response(
+            ['sub1_answer' => 'Something']));
+        $this->assertEquals([null, question_state::$gradedwrong], $question->grade_response(
+            ['sub1_answer' => 'Input box']));
+
+        $this->assertEquals(1, $question->get_max_fraction());
+        $this->assertEquals(0, $question->get_min_fraction());
+        $this->assertNull($question->compute_final_grade([['sub1_answer' => 'Something']], 1));
+        $this->assertNull($question->grade_response([['sub1_answer' => 'Something']])[0]);
     }
 
 }

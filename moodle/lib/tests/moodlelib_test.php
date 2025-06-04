@@ -27,7 +27,7 @@ use lang_string;
  * @author     T.J.Hunt@open.ac.uk
  * @author     nicolas@moodle.com
  */
-class moodlelib_test extends \advanced_testcase {
+final class moodlelib_test extends \advanced_testcase {
 
     /**
      * Define a local decimal separator.
@@ -646,6 +646,38 @@ class moodlelib_test extends \advanced_testcase {
         $this->assertSame('', clean_param(null, PARAM_TEXT));
     }
 
+    /**
+     * Data provider for {@see test_clean_param_host}
+     *
+     * @return array
+     */
+    public static function clean_param_host_provider(): array {
+        return [
+            'Valid (low octets)' => ['0.0.0.0', '0.0.0.0'],
+            'Valid (high octets)' => ['255.255.255.255', '255.255.255.255'],
+            'Invalid first octet' => ['256.1.1.1', ''],
+            'Invalid second octet' => ['1.256.1.1', ''],
+            'Invalid third octet' => ['1.1.256.1', ''],
+            'Invalid fourth octet' => ['1.1.1.256', ''],
+            'Valid host' => ['moodle.org', 'moodle.org'],
+            'Invalid host' => ['.example.com', ''],
+        ];
+    }
+
+    /**
+     * Testing cleaning parameters with PARAM_HOST
+     *
+     * @param string $param
+     * @param string $expected
+     *
+     * @dataProvider clean_param_host_provider
+     *
+     * @covers \clean_param
+     */
+    public function test_clean_param_host(string $param, string $expected): void {
+        $this->assertEquals($expected, clean_param($param, PARAM_HOST));
+    }
+
     public function test_clean_param_url() {
         // Test PARAM_URL and PARAM_LOCALURL a bit.
         // Valid URLs.
@@ -860,13 +892,15 @@ class moodlelib_test extends \advanced_testcase {
             '-13.5'                          => '',
             '0.2'                            => '',
             ''                               => '',
-            null                             => '',
         );
 
         foreach ($testvalues as $testvalue => $expectedvalue) {
             $actualvalue = clean_param($testvalue, PARAM_TIMEZONE);
             $this->assertEquals($expectedvalue, $actualvalue);
         }
+
+        // Test for null.
+        $this->assertEquals('', clean_param(null, PARAM_TIMEZONE));
     }
 
     public function test_clean_param_null_argument() {
@@ -1100,7 +1134,7 @@ class moodlelib_test extends \advanced_testcase {
      *
      * @return array of ($filename, $length, $expected, $includehash)
      */
-    public function shorten_filename_provider() {
+    public static function shorten_filename_provider(): array {
         $filename = 'sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium totam rem';
         $shortfilename = 'sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque';
 
@@ -1203,7 +1237,7 @@ class moodlelib_test extends \advanced_testcase {
      *
      * @return array of ($filename, $length, $expected, $includehash)
      */
-    public function shorten_filenames_provider() {
+    public static function shorten_filenames_provider(): array {
         $shortfilename = 'sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque';
         $longfilename = 'sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium totam rem';
         $extfilename = $longfilename.'.zip';
@@ -1557,227 +1591,6 @@ class moodlelib_test extends \advanced_testcase {
         set_user_preference('test_pref', 1);
         unset_user_preference('test_pref', $USER->id);
         $this->assertNull(get_user_preferences('test_pref'));
-    }
-
-    /**
-     * Test essential features implementation of {@link get_extra_user_fields()} as the admin user with all capabilities.
-     *
-     * @deprecated since Moodle 3.11 MDL-45242
-     */
-    public function test_get_extra_user_fields_essentials() {
-        global $CFG, $USER, $DB;
-        $this->resetAfterTest();
-
-        $this->setAdminUser();
-        $context = \context_system::instance();
-
-        // No fields.
-        $CFG->showuseridentity = '';
-        $this->assertEquals(array(), get_extra_user_fields($context));
-
-        // One field.
-        $CFG->showuseridentity = 'frog';
-        $this->assertEquals(array('frog'), get_extra_user_fields($context));
-
-        // Two fields.
-        $CFG->showuseridentity = 'frog,zombie';
-        $this->assertEquals(array('frog', 'zombie'), get_extra_user_fields($context));
-
-        // No fields, except.
-        $CFG->showuseridentity = '';
-        $this->assertEquals(array(), get_extra_user_fields($context, array('frog')));
-
-        // One field.
-        $CFG->showuseridentity = 'frog';
-        $this->assertEquals(array(), get_extra_user_fields($context, array('frog')));
-
-        // Two fields.
-        $CFG->showuseridentity = 'frog,zombie';
-        $this->assertEquals(array('zombie'), get_extra_user_fields($context, array('frog')));
-
-        $this->assertDebuggingCalledCount(6);
-    }
-
-    /**
-     * Prepare environment for couple of tests related to permission checks in {@link get_extra_user_fields()}.
-     *
-     * @return stdClass
-     * @deprecated since Moodle 3.11 MDL-45242
-     */
-    protected function environment_for_get_extra_user_fields_tests() {
-        global $CFG, $DB;
-
-        $CFG->showuseridentity = 'idnumber,country,city';
-        $CFG->hiddenuserfields = 'country,city';
-
-        $env = new \stdClass();
-
-        $env->course = $this->getDataGenerator()->create_course();
-        $env->coursecontext = \context_course::instance($env->course->id);
-
-        $env->teacherrole = $DB->get_record('role', array('shortname' => 'teacher'));
-        $env->studentrole = $DB->get_record('role', array('shortname' => 'student'));
-        $env->managerrole = $DB->get_record('role', array('shortname' => 'manager'));
-
-        $env->student = $this->getDataGenerator()->create_user();
-        $env->teacher = $this->getDataGenerator()->create_user();
-        $env->manager = $this->getDataGenerator()->create_user();
-
-        role_assign($env->studentrole->id, $env->student->id, $env->coursecontext->id);
-        role_assign($env->teacherrole->id, $env->teacher->id, $env->coursecontext->id);
-        role_assign($env->managerrole->id, $env->manager->id, SYSCONTEXTID);
-
-        return $env;
-    }
-
-    /**
-     * No identity fields shown to student user (no permission to view identity fields).
-     *
-     * @deprecated since Moodle 3.11 MDL-45242
-     */
-    public function test_get_extra_user_fields_no_access() {
-
-        $this->resetAfterTest();
-        $env = $this->environment_for_get_extra_user_fields_tests();
-        $this->setUser($env->student);
-
-        $this->assertEquals(array(), get_extra_user_fields($env->coursecontext));
-        $this->assertEquals(array(), get_extra_user_fields(\context_system::instance()));
-
-        $this->assertDebuggingCalledCount(2);
-    }
-
-    /**
-     * Teacher can see students' identity fields only within the course.
-     *
-     * @deprecated since Moodle 3.11 MDL-45242
-     */
-    public function test_get_extra_user_fields_course_only_access() {
-
-        $this->resetAfterTest();
-        $env = $this->environment_for_get_extra_user_fields_tests();
-        $this->setUser($env->teacher);
-
-        $this->assertEquals(array('idnumber', 'country', 'city'), get_extra_user_fields($env->coursecontext));
-        $this->assertEquals(array(), get_extra_user_fields(\context_system::instance()));
-
-        $this->assertDebuggingCalledCount(2);
-    }
-
-    /**
-     * Teacher can be prevented from seeing students' identity fields even within the course.
-     *
-     * @deprecated since Moodle 3.11 MDL-45242
-     */
-    public function test_get_extra_user_fields_course_prevented_access() {
-
-        $this->resetAfterTest();
-        $env = $this->environment_for_get_extra_user_fields_tests();
-        $this->setUser($env->teacher);
-
-        assign_capability('moodle/course:viewhiddenuserfields', CAP_PREVENT, $env->teacherrole->id, $env->coursecontext->id);
-        $this->assertEquals(array('idnumber'), get_extra_user_fields($env->coursecontext));
-
-        $this->assertDebuggingCalledCount(1);
-    }
-
-    /**
-     * Manager can see students' identity fields anywhere.
-     *
-     * @deprecated since Moodle 3.11 MDL-45242
-     */
-    public function test_get_extra_user_fields_anywhere_access() {
-
-        $this->resetAfterTest();
-        $env = $this->environment_for_get_extra_user_fields_tests();
-        $this->setUser($env->manager);
-
-        $this->assertEquals(array('idnumber', 'country', 'city'), get_extra_user_fields($env->coursecontext));
-        $this->assertEquals(array('idnumber', 'country', 'city'), get_extra_user_fields(\context_system::instance()));
-
-        $this->assertDebuggingCalledCount(2);
-    }
-
-    /**
-     * Manager can be prevented from seeing hidden fields outside the course.
-     *
-     * @deprecated since Moodle 3.11 MDL-45242
-     */
-    public function test_get_extra_user_fields_schismatic_access() {
-
-        $this->resetAfterTest();
-        $env = $this->environment_for_get_extra_user_fields_tests();
-        $this->setUser($env->manager);
-
-        assign_capability('moodle/user:viewhiddendetails', CAP_PREVENT, $env->managerrole->id, SYSCONTEXTID, true);
-        $this->assertEquals(array('idnumber'), get_extra_user_fields(\context_system::instance()));
-        // Note that inside the course, the manager can still see the hidden identifiers as this is currently
-        // controlled by a separate capability for legacy reasons.
-        $this->assertEquals(array('idnumber', 'country', 'city'), get_extra_user_fields($env->coursecontext));
-
-        $this->assertDebuggingCalledCount(2);
-    }
-
-    /**
-     * Two capabilities must be currently set to prevent manager from seeing hidden fields.
-     *
-     * @deprecated since Moodle 3.11 MDL-45242
-     */
-    public function test_get_extra_user_fields_hard_to_prevent_access() {
-
-        $this->resetAfterTest();
-        $env = $this->environment_for_get_extra_user_fields_tests();
-        $this->setUser($env->manager);
-
-        assign_capability('moodle/user:viewhiddendetails', CAP_PREVENT, $env->managerrole->id, SYSCONTEXTID, true);
-        assign_capability('moodle/course:viewhiddenuserfields', CAP_PREVENT, $env->managerrole->id, SYSCONTEXTID, true);
-
-        $this->assertEquals(array('idnumber'), get_extra_user_fields(\context_system::instance()));
-        $this->assertEquals(array('idnumber'), get_extra_user_fields($env->coursecontext));
-
-        $this->assertDebuggingCalledCount(2);
-    }
-
-    /**
-     * Tests get_extra_user_fields_sql.
-     *
-     * @deprecated since Moodle 3.11 MDL-45242
-     */
-    public function test_get_extra_user_fields_sql() {
-        global $CFG, $USER, $DB;
-        $this->resetAfterTest();
-
-        $this->setAdminUser();
-
-        $context = \context_system::instance();
-
-        // No fields.
-        $CFG->showuseridentity = '';
-        $this->assertSame('', get_extra_user_fields_sql($context));
-
-        // One field.
-        $CFG->showuseridentity = 'frog';
-        $this->assertSame(', frog', get_extra_user_fields_sql($context));
-
-        // Two fields with table prefix.
-        $CFG->showuseridentity = 'frog,zombie';
-        $this->assertSame(', u1.frog, u1.zombie', get_extra_user_fields_sql($context, 'u1'));
-
-        // Two fields with field prefix.
-        $CFG->showuseridentity = 'frog,zombie';
-        $this->assertSame(', frog AS u_frog, zombie AS u_zombie',
-            get_extra_user_fields_sql($context, '', 'u_'));
-
-        // One field excluded.
-        $CFG->showuseridentity = 'frog';
-        $this->assertSame('', get_extra_user_fields_sql($context, '', '', array('frog')));
-
-        // Two fields, one excluded, table+field prefix.
-        $CFG->showuseridentity = 'frog,zombie';
-        $this->assertEquals(', u1.zombie AS u_zombie',
-            get_extra_user_fields_sql($context, 'u1', 'u_', array('frog')));
-
-        $this->assertDebuggingCalledCount(6);
     }
 
     /**
@@ -2886,35 +2699,125 @@ EOF;
     }
 
     /**
-     * Test function password_is_legacy_hash().
+     * Test function password_is_legacy_hash.
+     * @covers ::password_is_legacy_hash
      */
     public function test_password_is_legacy_hash() {
-        // Well formed md5s should be matched.
-        foreach (array('some', 'strings', 'to_check!') as $string) {
-            $md5 = md5($string);
-            $this->assertTrue(password_is_legacy_hash($md5));
+        // Well formed bcrypt hashes should be matched.
+        foreach (array('some', 'strings', 'to_check!') as $password) {
+            $bcrypt = password_hash($password, '2y');
+            $this->assertTrue(password_is_legacy_hash($bcrypt));
         }
-        // Strings that are not md5s should not be matched.
-        foreach (array('', AUTH_PASSWORD_NOT_CACHED, 'IPW8WTcsWNgAWcUS1FBVHegzJnw5M2jOmYkmfc8z.xdBOyC4Caeum') as $notmd5) {
-            $this->assertFalse(password_is_legacy_hash($notmd5));
+        // Strings that are not bcrypt should not be matched.
+        $sha512 = '$6$rounds=5000$somesalt$9nEA35u5h4oDrUdcVFUwXDSwIBiZtuKDHiaI/kxnBSslH4wVXeAhVsDn1UFxBxrnRJva/8dZ8IouaijJdd4cF';
+        foreach (array('', AUTH_PASSWORD_NOT_CACHED, $sha512) as $notbcrypt) {
+            $this->assertFalse(password_is_legacy_hash($notbcrypt));
         }
     }
 
     /**
-     * Test function validate_internal_user_password().
+     * Test function that calculates password pepper entropy.
+     * @covers ::calculate_entropy
+     */
+    public function test_calculate_entropy() {
+        // Test that the function returns 0 with an empty string.
+        $this->assertEquals(0, calculate_entropy(''));
+
+        // Test that the function returns the correct entropy.
+        $this->assertEquals(132.8814, number_format(calculate_entropy('#GV]NLie|x$H9[$rW%94bXZvJHa%z'), 4));
+    }
+
+    /**
+     * Test function to get password peppers.
+     * @covers ::get_password_peppers
+     */
+    public function test_get_password_peppers() {
+        global $CFG;
+        $this->resetAfterTest();
+
+        // First assert that the function returns an empty array,
+        // when no peppers are set.
+        $this->assertEquals([], get_password_peppers());
+
+        // Now set some peppers and check that they are returned.
+        $CFG->passwordpeppers = [
+                1 => '#GV]NLie|x$H9[$rW%94bXZvJHa%z',
+                2 => '#GV]NLie|x$H9[$rW%94bXZvJHa%$'
+        ];
+        $peppers = get_password_peppers();
+        $this->assertCount(2, $peppers);
+        $this->assertEquals($CFG->passwordpeppers, $peppers);
+
+        // Check that the peppers are returned in the correct order.
+        // Highest numerical key first.
+        $this->assertEquals('#GV]NLie|x$H9[$rW%94bXZvJHa%$', $peppers[2]);
+        $this->assertEquals('#GV]NLie|x$H9[$rW%94bXZvJHa%z', $peppers[1]);
+
+        // Update the latest pepper to be an empty string,
+        // to test phasing out peppers.
+        $CFG->passwordpeppers = [
+                1 => '#GV]NLie|x$H9[$rW%94bXZvJHa%z',
+                2 => '#GV]NLie|x$H9[$rW%94bXZvJHa%$',
+                3 => ''
+        ];
+        $peppers = get_password_peppers();
+        $this->assertCount(3, $peppers);
+        $this->assertEquals($CFG->passwordpeppers, $peppers);
+
+        // Finally, check that low entropy peppers throw an exception.
+        $CFG->passwordpeppers = [
+                1 => 'foo',
+                2 => 'bar'
+        ];
+        $this->expectException(\coding_exception::class);
+        get_password_peppers();
+    }
+
+    /**
+     * Test function to validate password length.
+     *
+     * @covers ::exceeds_password_length
+     * @return void
+     */
+    public function test_exceeds_password_length() {
+        $this->resetAfterTest(true);
+
+        // With password less than equals to MAX_PASSWORD_CHARACTERS.
+        $this->assertFalse(exceeds_password_length('test'));
+
+        // With password more than MAX_PASSWORD_CHARACTERS.
+        $password = 'thisisapasswordthatcontainscharactersthatcan';
+        $password .= 'exeedthepasswordlengthof128thisispasswordthatcont';
+        $password .= 'ainscharactersthatcanexeedthelength-----';
+        $this->assertTrue(exceeds_password_length($password));
+    }
+
+    /**
+     * Test function validate_internal_user_password.
+     * @covers ::validate_internal_user_password
      */
     public function test_validate_internal_user_password() {
-        // Test bcrypt hashes.
-        $validhashes = array(
+        $this->resetAfterTest(true);
+        // Test bcrypt hashes (these will be updated but will still count as valid).
+        $bcrypthashes = [
             'pw' => '$2y$10$LOSDi5eaQJhutSRun.OVJ.ZSxQZabCMay7TO1KmzMkDMPvU40zGXK',
             'abc' => '$2y$10$VWTOhVdsBbWwtdWNDRHSpewjd3aXBQlBQf5rBY/hVhw8hciarFhXa',
             'C0mP1eX_&}<?@*&%` |\"' => '$2y$10$3PJf.q.9ywNJlsInPbqc8.IFeSsvXrGvQLKRFBIhVu1h1I3vpIry6',
-            'ĩńťėŕňăţĩōŋāĹ' => '$2y$10$3A2Y8WpfRAnP3czJiSv6N.6Xp0T8hW3QZz2hUCYhzyWr1kGP1yUve'
-        );
+            'ĩńťėŕňăţĩōŋāĹ' => '$2y$10$3A2Y8WpfRAnP3czJiSv6N.6Xp0T8hW3QZz2hUCYhzyWr1kGP1yUve',
+        ];
+
+        // Test sha512 hashes.
+        $sha512hashes = [
+            'pw2' => '$6$rounds=10000$0rDIzh/4.MMf9Dm8$Zrj6Ulc1JFj0RFXwMJFsngRSNGlqkPlV1wwRVv7wBLrMeQeMZrwsBO62zy63D//6R5sNGVYQwPB0K8jPCScxB/',
+            'abc2' => '$6$rounds=10000$t0L6PklgpijV4tMB$1vpCRKCImsVqTPMiZTi6zLGbs.hpAU8I2BhD/IFliBnHJkFZCWEBfTCq6pEzo0Q8nXsryrgeZ.qngcW.eifuW.',
+            'C0mP1eX_&}<?@*&%` |\"2' => '$6$rounds=10000$3TAyVAXN0zmFZ4il$KF8YzduX6Gu0C2xHsY83zoqQ/rLVsb9mLe417wDObo9tO00qeUC68/y2tMq4FL2ixnMPH3OMwzGYo8VJrm8Eq1',
+            'ĩńťėŕňăţĩōŋāĹ2' => '$6$rounds=10000$SHR/6ctTkfXOy5NP$YPv42hjDjohVWD3B0boyEYTnLcBXBKO933ijHmkPXNL7BpqAcbYMLfTl9rjsPmCt.1GZvEJZ8ikkCPYBC5Sdp.',
+        ];
+
+        $validhashes = array_merge($bcrypthashes, $sha512hashes);
 
         foreach ($validhashes as $password => $hash) {
-            $user = new \stdClass();
-            $user->auth = 'manual';
+            $user = $this->getDataGenerator()->create_user(array('auth' => 'manual', 'password' => $password));
             $user->password = $hash;
             // The correct password should be validated.
             $this->assertTrue(validate_internal_user_password($user, $password));
@@ -2924,28 +2827,83 @@ EOF;
     }
 
     /**
-     * Test function hash_internal_user_password().
+     * Test function validate_internal_user_password() with a peppered password,
+     * when the pepper no longer exists.
+     *
+     * @covers ::validate_internal_user_password
      */
-    public function test_hash_internal_user_password() {
-        $passwords = array('pw', 'abc123', 'C0mP1eX_&}<?@*&%` |\"', 'ĩńťėŕňăţĩōŋāĹ');
+    public function test_validate_internal_user_password_bad_pepper() {
+        global $CFG;
+        $this->resetAfterTest();
 
-        // Check that some passwords that we convert to hashes can
-        // be validated.
+        // Set a pepper.
+        $CFG->passwordpeppers = [
+                1 => '#GV]NLie|x$H9[$rW%94bXZvJHa%z',
+                2 => '#GV]NLie|x$H9[$rW%94bXZvJHa%$'
+        ];
+        $password = 'test';
+
+        $user = $this->getDataGenerator()->create_user(['auth' => 'manual', 'password' => $password]);
+        $this->assertTrue(validate_internal_user_password($user, $password));
+        $this->assertFalse(validate_internal_user_password($user, 'badpw'));
+
+        // Now remove the peppers.
+        // Things should not work.
+        unset($CFG->passwordpeppers);
+        $this->assertFalse(validate_internal_user_password($user, $password));
+    }
+
+    /**
+     * Helper method to test hashing passwords.
+     *
+     * @param array $passwords
+     * @return void
+     * @covers ::hash_internal_user_password
+     */
+    public function validate_hashed_passwords(array $passwords): void {
         foreach ($passwords as $password) {
             $hash = hash_internal_user_password($password);
             $fasthash = hash_internal_user_password($password, true);
-            $user = new \stdClass();
-            $user->auth = 'manual';
+            $user = $this->getDataGenerator()->create_user(['auth' => 'manual']);
             $user->password = $hash;
             $this->assertTrue(validate_internal_user_password($user, $password));
 
-            // They should not be in md5 format.
+            // They should not be in bycrypt format.
             $this->assertFalse(password_is_legacy_hash($hash));
 
             // Check that cost factor in hash is correctly set.
-            $this->assertMatchesRegularExpression('/\$10\$/', $hash);
-            $this->assertMatchesRegularExpression('/\$04\$/', $fasthash);
+            $this->assertMatchesRegularExpression('/\$6\$rounds=10000\$.{103}/', $hash);
+            $this->assertMatchesRegularExpression('/\$6\$rounds=5000\$.{103}/', $fasthash);
         }
+    }
+
+    /**
+     * Test function update_internal_user_password.
+     * @covers ::update_internal_user_password
+     */
+    public function test_hash_internal_user_password() {
+        global $CFG;
+        $this->resetAfterTest();
+        $passwords = ['pw', 'abc123', 'C0mP1eX_&}<?@*&%` |\"', 'ĩńťėŕňăţĩōŋāĹ'];
+
+        // Check that some passwords that we convert to hashes can
+        // be validated.
+        $this->validate_hashed_passwords($passwords);
+
+        // Test again with peppers.
+        $CFG->passwordpeppers = [
+                1 => '#GV]NLie|x$H9[$rW%94bXZvJHa%z',
+                2 => '#GV]NLie|x$H9[$rW%94bXZvJHa%$'
+        ];
+        $this->validate_hashed_passwords($passwords);
+
+        // Add a new pepper and check that things still pass.
+        $CFG->passwordpeppers = [
+                1 => '#GV]NLie|x$H9[$rW%94bXZvJHa%z',
+                2 => '#GV]NLie|x$H9[$rW%94bXZvJHa%$',
+                3 => '#GV]NLie|x$H9[$rW%94bXZvJHQ%$'
+        ];
+        $this->validate_hashed_passwords($passwords);
     }
 
     /**
@@ -2966,8 +2924,8 @@ EOF;
         }
 
         $user = $this->getDataGenerator()->create_user(array('auth'=>'manual'));
-        // Manually set the user's password to the md5 of the string 'password'.
-        $DB->set_field('user', 'password', '5f4dcc3b5aa765d61d8327deb882cf99', array('id' => $user->id));
+        // Manually set the user's password to the bcrypt of the string 'password'.
+        $DB->set_field('user', 'password', '$2y$10$HhNAYmQcU1GqU/psOmZjfOWlhPEcxx9aEgSJqBfEtYVyq1jPKqMAi', ['id' => $user->id]);
 
         $sink = $this->redirectEvents();
         // Update the password.
@@ -2976,7 +2934,7 @@ EOF;
         $sink->close();
         $event = array_pop($events);
 
-        // Password should have been updated to a bcrypt hash.
+        // Password should have been updated to a SHA512 hash.
         $this->assertFalse(password_is_legacy_hash($user->password));
 
         // Verify event information.
@@ -2996,18 +2954,41 @@ EOF;
     /**
      * Testing that if the password is not cached, that it does not update
      * the user table and fire event.
+     *
+     * @dataProvider update_internal_user_password_no_cache_provider
+     * @covers ::update_internal_user_password
+     *
+     * @param string $authmethod The authentication method to set for the user.
+     * @param string|null $password The new password to set for the user.
      */
-    public function test_update_internal_user_password_no_cache() {
+    public function test_update_internal_user_password_no_cache(
+        string $authmethod,
+        ?string $password,
+    ): void {
         global $DB;
         $this->resetAfterTest();
 
-        $user = $this->getDataGenerator()->create_user(array('auth' => 'cas'));
+        $user = $this->getDataGenerator()->create_user(['auth' => $authmethod]);
         $DB->update_record('user', ['id' => $user->id, 'password' => AUTH_PASSWORD_NOT_CACHED]);
         $user->password = AUTH_PASSWORD_NOT_CACHED;
 
         $sink = $this->redirectEvents();
-        update_internal_user_password($user, 'wonkawonka');
+        update_internal_user_password($user, $password);
         $this->assertEquals(0, $sink->count(), 'User updated event should not fire');
+    }
+
+    /**
+     * The data provider will test the {@see test_update_internal_user_password_no_cache}
+     * for accounts using the authentication method with prevent_local_passwords set to true (no cache).
+     *
+     * @return array
+     */
+    public static function update_internal_user_password_no_cache_provider(): array {
+        return [
+            'Password is not empty' => ['cas', 'wonkawonka'],
+            'Password is an empty string' => ['oauth2', ''],
+            'Password is null' => ['oauth2', null],
+        ];
     }
 
     /**
@@ -3175,62 +3156,6 @@ EOF;
         $CFG->alternativefullnameformat = $originalcfg->alternativefullnameformat;
     }
 
-    /**
-     * Tests the get_all_user_name_fields() deprecated function.
-     *
-     * @deprecated since Moodle 3.11 MDL-45242
-     */
-    public function test_get_all_user_name_fields() {
-        $this->resetAfterTest();
-
-        // Additional names in an array.
-        $testarray = array('firstnamephonetic' => 'firstnamephonetic',
-                'lastnamephonetic' => 'lastnamephonetic',
-                'middlename' => 'middlename',
-                'alternatename' => 'alternatename',
-                'firstname' => 'firstname',
-                'lastname' => 'lastname');
-        $this->assertEquals($testarray, get_all_user_name_fields());
-
-        // Additional names as a string.
-        $teststring = 'firstnamephonetic,lastnamephonetic,middlename,alternatename,firstname,lastname';
-        $this->assertEquals($teststring, get_all_user_name_fields(true));
-
-        // Additional names as a string with an alias.
-        $teststring = 't.firstnamephonetic,t.lastnamephonetic,t.middlename,t.alternatename,t.firstname,t.lastname';
-        $this->assertEquals($teststring, get_all_user_name_fields(true, 't'));
-
-        // Additional name fields with a prefix - object.
-        $testarray = array('firstnamephonetic' => 'authorfirstnamephonetic',
-                'lastnamephonetic' => 'authorlastnamephonetic',
-                'middlename' => 'authormiddlename',
-                'alternatename' => 'authoralternatename',
-                'firstname' => 'authorfirstname',
-                'lastname' => 'authorlastname');
-        $this->assertEquals($testarray, get_all_user_name_fields(false, null, 'author'));
-
-        // Additional name fields with an alias and a title - string.
-        $teststring = 'u.firstnamephonetic AS authorfirstnamephonetic,u.lastnamephonetic AS authorlastnamephonetic,u.middlename AS authormiddlename,u.alternatename AS authoralternatename,u.firstname AS authorfirstname,u.lastname AS authorlastname';
-        $this->assertEquals($teststring, get_all_user_name_fields(true, 'u', null, 'author'));
-
-        // Test the order parameter of the function.
-        // Returning an array.
-        $testarray = array('firstname' => 'firstname',
-                'lastname' => 'lastname',
-                'firstnamephonetic' => 'firstnamephonetic',
-                'lastnamephonetic' => 'lastnamephonetic',
-                'middlename' => 'middlename',
-                'alternatename' => 'alternatename'
-        );
-        $this->assertEquals($testarray, get_all_user_name_fields(false, null, null, null, true));
-
-        // Returning a string.
-        $teststring = 'firstname,lastname,firstnamephonetic,lastnamephonetic,middlename,alternatename';
-        $this->assertEquals($teststring, get_all_user_name_fields(true, null, null, null, true));
-
-        $this->assertDebuggingCalledCount(7);
-    }
-
     public function test_order_in_string() {
         $this->resetAfterTest();
 
@@ -3320,7 +3245,7 @@ EOF;
     /**
      * A data provider for testing email messageid
      */
-    public function generate_email_messageid_provider() {
+    public static function generate_email_messageid_provider(): array {
         return array(
             'nopath' => array(
                 'wwwroot' => 'http://www.example.com',
@@ -3387,7 +3312,7 @@ EOF;
     /**
      * A data provider for testing email diversion
      */
-    public function diverted_emails_provider() {
+    public static function diverted_emails_provider(): array {
         return array(
             'nodiverts' => array(
                 'divertallemailsto' => null,
@@ -3594,7 +3519,7 @@ EOF;
      *
      * @return array
      */
-    public function email_to_user_attachment_provider(): array {
+    public static function email_to_user_attachment_provider(): array {
         global $CFG;
 
         // Return all paths that can be used to send attachments from.
@@ -3709,9 +3634,9 @@ EOF;
 
     /**
      * Data provider for test_generate_confirmation_link
-     * @return Array of confirmation urls and expected resultant confirmation links
+     * @return array Confirmation urls and expected resultant confirmation links
      */
-    public function generate_confirmation_link_provider() {
+    public static function generate_confirmation_link_provider(): array {
         global $CFG;
         return [
             "Simple name" => [
@@ -3779,7 +3704,7 @@ EOF;
                 "confirmationurl" => "http://moodle.org/ext.php?with=some&param=eters",
                 "expected" => "http://moodle.org/ext.php?with=some&param=eters&data=/many_-%2E%40characters%40_%40-%2E%2E-%2E%2E"
             ],
-            "Custom external confirmation url with parameters" => [
+            "Custom external confirmation url with parameters (again)" => [
                 "username" => "many_-.@characters@_@-..-..",
                 "confirmationurl" => "http://moodle.org/ext.php?with=some&data=test",
                 "expected" => "http://moodle.org/ext.php?with=some&data=/many_-%2E%40characters%40_%40-%2E%2E-%2E%2E"
@@ -3955,9 +3880,11 @@ EOF;
      * @dataProvider count_words_testcases
      * @param int $expectedcount number of words in $string.
      * @param string $string the test string to count the words of.
+     * @param int|null $format
      */
-    public function test_count_words(int $expectedcount, string $string): void {
-        $this->assertEquals($expectedcount, count_words($string));
+    public function test_count_words(int $expectedcount, string $string, $format = null): void {
+        $this->assertEquals($expectedcount, count_words($string, $format),
+            "'$string' with format '$format' does not match count $expectedcount");
     }
 
     /**
@@ -3965,7 +3892,14 @@ EOF;
      *
      * @return array of test cases.
      */
-    public function count_words_testcases(): array {
+    public static function count_words_testcases(): array {
+        // Copy-pasting example from MDL-64240.
+        $copypasted = <<<EOT
+<p onclick="alert('boop');">Snoot is booped</p>
+ <script>alert('Boop the snoot');</script>
+ <img alt="Boop the Snoot." src="https://proxy.duckduckgo.com/iu/?u=http%3A%2F%2Fwww.geekfill.com%2Fwp-content%2Fuploads%2F2015%2F08%2FBoop-the-Snoot.jpg&f=1">
+EOT;
+
         // The counts here should match MS Word and Libre Office.
         return [
             [0, ''],
@@ -4002,6 +3936,16 @@ EOF;
             [1, "SO<sub>4</sub><sup>2-</sup>"],
             [6, '4+4=8 i.e. O(1) a,b,c,d I’m black&blue_really'],
             [1, '<span>a</span><span>b</span>'],
+            [1, '<span>a</span><span>b</span>', FORMAT_PLAIN],
+            [1, '<span>a</span><span>b</span>', FORMAT_HTML],
+            [1, '<span>a</span><span>b</span>', FORMAT_MOODLE],
+            [1, '<span>a</span><span>b</span>', FORMAT_MARKDOWN],
+            [1, 'aa <argh <bleh>pokus</bleh>'],
+            [2, 'aa <argh <bleh>pokus</bleh>', FORMAT_HTML],
+            [6, $copypasted],
+            [6, $copypasted, FORMAT_PLAIN],
+            [3, $copypasted, FORMAT_HTML],
+            [3, $copypasted, FORMAT_MOODLE],
         ];
     }
 
@@ -4011,9 +3955,11 @@ EOF;
      * @dataProvider count_letters_testcases
      * @param int $expectedcount number of characters in $string.
      * @param string $string the test string to count the letters of.
+     * @param int|null $format
      */
-    public function test_count_letters(int $expectedcount, string $string): void {
-        $this->assertEquals($expectedcount, count_letters($string));
+    public function test_count_letters(int $expectedcount, string $string, $format = null): void {
+        $this->assertEquals($expectedcount, count_letters($string, $format),
+            "'$string' with format '$format' does not match count $expectedcount");
     }
 
     /**
@@ -4021,12 +3967,18 @@ EOF;
      *
      * @return array of test cases.
      */
-    public function count_letters_testcases(): array {
+    public static function count_letters_testcases(): array {
         return [
             [0, ''],
             [1, 'x'],
             [1, '&amp;'],
             [4, '<p>frog</p>'],
+            [4, '<p>frog</p>', FORMAT_PLAIN],
+            [4, '<p>frog</p>', FORMAT_MOODLE],
+            [4, '<p>frog</p>', FORMAT_HTML],
+            [4, '<p>frog</p>', FORMAT_MARKDOWN],
+            [2, 'aa <argh <bleh>pokus</bleh>'],
+            [7, 'aa <argh <bleh>pokus</bleh>', FORMAT_HTML],
         ];
     }
 
@@ -4123,35 +4075,6 @@ EOF;
 
     }
 
-    /*
-     * Test emulation of random_bytes() function.
-     */
-    public function test_random_bytes_emulate() {
-        $result = random_bytes_emulate(10);
-        $this->assertSame(10, strlen($result));
-        $this->assertnotSame($result, random_bytes_emulate(10));
-
-        $result = random_bytes_emulate(21);
-        $this->assertSame(21, strlen($result));
-        $this->assertnotSame($result, random_bytes_emulate(21));
-
-        $result = random_bytes_emulate(666);
-        $this->assertSame(666, strlen($result));
-
-        $result = random_bytes_emulate(40);
-        $this->assertSame(40, strlen($result));
-
-        $this->assertDebuggingNotCalled();
-
-        $result = random_bytes_emulate(0);
-        $this->assertSame('', $result);
-        $this->assertDebuggingCalled();
-
-        $result = random_bytes_emulate(-1);
-        $this->assertSame('', $result);
-        $this->assertDebuggingCalled();
-    }
-
     /**
      * Test function for creation of random strings.
      */
@@ -4177,14 +4100,6 @@ EOF;
         $this->assertMatchesRegularExpression('/^[' . $pool . ']+$/', $result);
 
         $this->assertDebuggingNotCalled();
-
-        $result = random_string(0);
-        $this->assertSame('', $result);
-        $this->assertDebuggingCalled();
-
-        $result = random_string(-1);
-        $this->assertSame('', $result);
-        $this->assertDebuggingCalled();
     }
 
     /**
@@ -4212,20 +4127,12 @@ EOF;
         $this->assertMatchesRegularExpression('/^[' . $pool . ']+$/', $result);
 
         $this->assertDebuggingNotCalled();
-
-        $result = complex_random_string(0);
-        $this->assertSame('', $result);
-        $this->assertDebuggingCalled();
-
-        $result = complex_random_string(-1);
-        $this->assertSame('', $result);
-        $this->assertDebuggingCalled();
     }
 
     /**
      * Data provider for private ips.
      */
-    public function data_private_ips() {
+    public static function data_private_ips(): array {
         return array(
             array('10.0.0.0'),
             array('172.16.0.0'),
@@ -4250,7 +4157,7 @@ EOF;
     /**
      * Data provider for public ips.
      */
-    public function data_public_ips() {
+    public static function data_public_ips(): array {
         return array(
             array('2400:cb00:2048:1::8d65:71b3'),
             array('2400:6180:0:d0::1b:2001'),
@@ -4303,7 +4210,7 @@ EOF;
      *
      * @return array Returns an array of test data for the above function.
      */
-    public function data_can_send_from_real_email_address() {
+    public static function data_can_send_from_real_email_address(): array {
         return [
             // Test from email is in allowed domain.
             // Test that from display is set to show no one.
@@ -4449,7 +4356,7 @@ EOF;
      *
      * @return array Returns an array of test data for the above function.
      */
-    public function data_email_is_not_allowed_for_allowemailaddresses() {
+    public static function data_email_is_not_allowed_for_allowemailaddresses(): array {
         return [
             // Test allowed domain empty list.
             [
@@ -4528,7 +4435,7 @@ EOF;
      *
      * @return array Returns an array of test data for the above function.
      */
-    public function data_email_is_not_allowed_for_denyemailaddresses() {
+    public static function data_email_is_not_allowed_for_denyemailaddresses(): array {
         return [
             // Test denied domain empty list.
             [
@@ -4591,24 +4498,26 @@ EOF;
     public function test_unserialize_array() {
         $a = [1, 2, 3];
         $this->assertEquals($a, unserialize_array(serialize($a)));
-        $this->assertEquals($a, unserialize_array(serialize($a)));
         $a = ['a' => 1, 2 => 2, 'b' => 'cde'];
-        $this->assertEquals($a, unserialize_array(serialize($a)));
         $this->assertEquals($a, unserialize_array(serialize($a)));
         $a = ['a' => 1, 2 => 2, 'b' => 'c"d"e'];
         $this->assertEquals($a, unserialize_array(serialize($a)));
         $a = ['a' => 1, 2 => ['c' => 'd', 'e' => 'f'], 'b' => 'cde'];
         $this->assertEquals($a, unserialize_array(serialize($a)));
-
-        // Can not unserialize if any string contains semicolons.
+        $a = ['a' => 1, 2 => ['c' => 'd', 'e' => ['f' => 'g']], 'b' => 'cde'];
+        $this->assertEquals($a, unserialize_array(serialize($a)));
         $a = ['a' => 1, 2 => 2, 'b' => 'c"d";e'];
-        $this->assertEquals(false, unserialize_array(serialize($a)));
+        $this->assertEquals($a, unserialize_array(serialize($a)));
 
         // Can not unserialize if there are any objects.
         $a = (object)['a' => 1, 2 => 2, 'b' => 'cde'];
-        $this->assertEquals(false, unserialize_array(serialize($a)));
+        $this->assertFalse(unserialize_array(serialize($a)));
         $a = ['a' => 1, 2 => 2, 'b' => (object)['a' => 'cde']];
-        $this->assertEquals(false, unserialize_array(serialize($a)));
+        $this->assertFalse(unserialize_array(serialize($a)));
+        $a = ['a' => 1, 2 => 2, 'b' => ['c' => (object)['a' => 'cde']]];
+        $this->assertFalse(unserialize_array(serialize($a)));
+        $a = ['a' => 1, 2 => 2, 'b' => ['c' => new lang_string('no')]];
+        $this->assertFalse(unserialize_array(serialize($a)));
 
         // Array used in the grader report.
         $a = array('aggregatesonly' => [51, 34], 'gradesonly' => [21, 45, 78]);
@@ -4704,7 +4613,7 @@ EOF;
      *
      * @return array
      */
-    public function component_class_callback_default_provider() {
+    public static function component_class_callback_default_provider(): array {
         return [
             'null' => [null],
             'empty string' => [''],
@@ -4720,7 +4629,7 @@ EOF;
      *
      * @return array
      */
-    public function component_class_callback_data_provider() {
+    public static function component_class_callback_data_provider(): array {
         return [
             'empty string' => [''],
             'string' => ['This is a string'],
@@ -4735,7 +4644,7 @@ EOF;
      *
      * @return array
      */
-    public function component_class_callback_multiple_params_provider() {
+    public static function component_class_callback_multiple_params_provider(): array {
         return [
             'empty array' => [
                 [],
@@ -4780,7 +4689,7 @@ EOF;
      *
      * @return array of (string)case => [(mixed)callable, (string|bool)expected description]
      */
-    public function callable_names_provider() {
+    public static function callable_names_provider(): array {
         return [
             'integer' => [
                 386,
@@ -4798,10 +4707,6 @@ EOF;
                 ['my_foobar_class', 'my_foobar_method'],
                 'my_foobar_class::my_foobar_method',
             ],
-            'static_method_of_object' => [
-                [$this, 'my_foobar_method'],
-                'core\moodlelib_test::my_foobar_method',
-            ],
             'method_of_object' => [
                 [new lang_string('parentlanguage', 'core_langconfig'), 'my_foobar_method'],
                 'lang_string::my_foobar_method',
@@ -4818,11 +4723,18 @@ EOF;
     }
 
     /**
+     * Test that get_callable_name works with a static method on an instance.
+     */
+    public function test_get_callable_name_this(): void {
+        $this->assertSame('core\moodlelib_test::foo', get_callable_name([$this, 'foo']));
+    }
+
+    /**
      * Data provider for \core_moodlelib_testcase::test_get_complete_user_data().
      *
      * @return array
      */
-    public function user_data_provider() {
+    public static function user_data_provider(): array {
         return [
             'Fetch data using a valid username' => [
                 'username', 's1', true
@@ -4941,19 +4853,23 @@ EOF;
      * @param int $time2 the time2 param.
      * @param string|null $format the format param.
      * @param string $expected the expected string.
+     * @param bool $dropzeroes the value passed for the `$dropzeros` param.
+     * @param bool $fullformat the value passed for the `$fullformat` param.
+     * @covers \get_time_interval_string
      */
-    public function test_get_time_interval_string(int $time1, int $time2, ?string $format, string $expected) {
+    public function test_get_time_interval_string(int $time1, int $time2, ?string $format, string $expected,
+            bool $dropzeroes = false, bool $fullformat = false) {
         if (is_null($format)) {
             $this->assertEquals($expected, get_time_interval_string($time1, $time2));
         } else {
-            $this->assertEquals($expected, get_time_interval_string($time1, $time2, $format));
+            $this->assertEquals($expected, get_time_interval_string($time1, $time2, $format, $dropzeroes, $fullformat));
         }
     }
 
     /**
      * Data provider for the test_get_time_interval_string() method.
      */
-    public function get_time_interval_string_provider() {
+    public static function get_time_interval_string_provider(): array {
         return [
             'Time is after the reference time by 1 minute, omitted format' => [
                 'time1' => 12345660,
@@ -5008,6 +4924,37 @@ EOF;
                 'time2' => 12345600,
                 'format' => '%R%adays %hhours %imins',
                 'expected' => '+0days 0hours 0mins'
+            ],
+            'Default format, time is after the reference time by 1 minute, drop zeroes, short form' => [
+                'time1' => 12345660,
+                'time2' => 12345600,
+                'format' => '',
+                'expected' => '1m',
+                'dropzeroes' => true,
+            ],
+            'Default format, time is after the reference time by 1 minute, drop zeroes, full form' => [
+                'time1' => 12345660,
+                'time2' => 12345600,
+                'format' => '',
+                'expected' => '1 minutes',
+                'dropzeroes' => true,
+                'fullformat' => true,
+            ],
+            'Default format, time is after the reference time by 1 minute, retain zeroes, full form' => [
+                'time1' => 12345660,
+                'time2' => 12345600,
+                'format' => '',
+                'expected' => '0 days 0 hours 1 minutes',
+                'dropzeroes' => false,
+                'fullformat' => true,
+            ],
+            'Empty string format, time is after the reference time by 1 minute, retain zeroes, full form' => [
+                'time1' => 12345660,
+                'time2' => 12345600,
+                'format' => '     ',
+                'expected' => '0 days 0 hours 1 minutes',
+                'dropzeroes' => false,
+                'fullformat' => true,
             ],
         ];
     }
@@ -5080,7 +5027,7 @@ EOF;
      *
      * @return array of ($size, $expected)
      */
-    public function display_size_provider() {
+    public static function display_size_provider(): array {
 
         return [
             [0, '0 bytes'],
@@ -5122,7 +5069,7 @@ EOF;
      *
      * @return array of ($size, $units, $expected)
      */
-    public function display_size_fixed_provider(): array {
+    public static function display_size_fixed_provider(): array {
         return [
             [0, 'KB', '0.0 KB'],
             [1, 'MB', '0.0 MB'],
@@ -5152,7 +5099,7 @@ EOF;
      *
      * @return array of ($size, $decimalplaces, $units, $expected)
      */
-    public function display_size_dp_provider(): array {
+    public static function display_size_dp_provider(): array {
         return [
             [0, 1, 'KB', '0.0 KB'],
             [1, 6, 'MB', '0.000001 MB'],
@@ -5198,7 +5145,7 @@ EOF;
      *
      * @return  array
      */
-    public function get_list_of_plugins_provider(): array {
+    public static function get_list_of_plugins_provider(): array {
         return [
             'Standard excludes' => [
                 ['amdd', 'class', 'local', 'test'],
@@ -5492,4 +5439,70 @@ EOF;
         $this->assertEquals(false, html_is_blank('<p>.</p>'));
         $this->assertEquals(false, html_is_blank('<img src="#">'));
     }
+
+    /**
+     * Provider for is_proxybypass
+     *
+     * @return array of test cases.
+     */
+    public static function is_proxybypass_provider(): array {
+
+        return [
+            'Proxybypass contains the same IP as the beginning of the URL' => [
+                'http://192.168.5.5-fake-app-7f000101.nip.io',
+                '192.168.5.5, 127.0.0.1',
+                false
+            ],
+            'Proxybypass contains the last part of the URL' => [
+                'http://192.168.5.5-fake-app-7f000101.nip.io',
+                'app-7f000101.nip.io',
+                false
+            ],
+            'Proxybypass contains the last part of the URL 2' => [
+                'http://store.mydomain.com',
+                'mydomain.com',
+                false
+            ],
+            'Proxybypass contains part of the url' => [
+                'http://myweb.com',
+                'store.myweb.com',
+                false
+            ],
+            'Different IPs used in proxybypass' => [
+                'http://192.168.5.5',
+                '192.168.5.3',
+                false
+            ],
+            'Proxybypass and URL matchs' => [
+                'http://store.mydomain.com',
+                'store.mydomain.com',
+                true
+            ],
+            'IP used in proxybypass' => [
+                'http://192.168.5.5',
+                '192.168.5.5',
+                true
+            ],
+        ];
+    }
+
+    /**
+     * Check if $url matches anything in proxybypass list
+     *
+     * Test function {@see is_proxybypass()}.
+     * @dataProvider is_proxybypass_provider
+     * @param string $url url to check
+     * @param string $proxybypass
+     * @param bool $expected Expected value.
+     */
+    public function test_is_proxybypass(string $url, string $proxybypass, bool $expected): void {
+        $this->resetAfterTest();
+
+        global $CFG;
+        $CFG->proxyhost = '192.168.5.5'; // Test with a fake proxy.
+        $CFG->proxybypass = $proxybypass;
+
+        $this->assertEquals($expected, is_proxybypass($url));
+    }
+
 }

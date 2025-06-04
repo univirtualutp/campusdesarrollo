@@ -402,7 +402,7 @@ function dialogue_can_track_dialogue($user = false) {
     }
 
     // Dont allow guests to track.
-    if (isguestuser($user) or empty($user->id)) {
+    if (isguestuser($user) || empty($user->id)) {
         return false;
     }
 
@@ -451,7 +451,8 @@ function dialogue_pluginfile($course, $cm, $context, $filearea, $args, $forcedow
     $fs = get_file_storage();
     $relativepath = implode('/', $args);
     $fullpath = "/$context->id/mod_dialogue/$filearea/$itemid/$relativepath";
-    if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
+    $file = $fs->get_file_by_hash(sha1($fullpath));
+    if (!$file || $file->is_directory()) {
         return false;
     }
 

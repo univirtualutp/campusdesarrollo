@@ -791,11 +791,13 @@ class question_no_pattern_expectation {
 abstract class qbehaviour_walkthrough_test_base extends question_testcase {
     /** @var question_display_options */
     protected $displayoptions;
+
     /** @var question_usage_by_activity */
     protected $quba;
-    /** @var integer */
 
+    /** @var int The slot number of the question_attempt we are using in $quba. */
     protected $slot;
+
     /**
      * @var string after {@link render()} has been called, this contains the
      * display of the question in its current state.
@@ -804,7 +806,8 @@ abstract class qbehaviour_walkthrough_test_base extends question_testcase {
 
     protected function setUp(): void {
         parent::setUp();
-        $this->resetAfterTest(true);
+        $this->resetAfterTest();
+        $this->setAdminUser();
 
         $this->displayoptions = new question_display_options();
         $this->quba = question_engine::make_questions_usage_by_activity('unit_test',
@@ -914,6 +917,7 @@ abstract class qbehaviour_walkthrough_test_base extends question_testcase {
      * $this->currentoutput so that it can be verified.
      */
     protected function render() {
+        $this->quba->preload_all_step_users();
         $this->currentoutput = $this->quba->render_question($this->slot, $this->displayoptions);
     }
 
@@ -1005,9 +1009,9 @@ abstract class qbehaviour_walkthrough_test_base extends question_testcase {
      * @param $condition one or more Expectations. (users varargs).
      */
     protected function check_current_output() {
-        $html = $this->quba->render_question($this->slot, $this->displayoptions);
+        $this->render();
         foreach (func_get_args() as $condition) {
-            $this->assert($condition, $html);
+            $this->assert($condition, $this->currentoutput);
         }
     }
 
@@ -1019,9 +1023,9 @@ abstract class qbehaviour_walkthrough_test_base extends question_testcase {
      * @param question_contains_select_expectation $expectations One or more expectations.
      */
     protected function check_output_contains_selectoptions(...$expectations) {
-        $html = $this->quba->render_question($this->slot, $this->displayoptions);
+        $this->render();
         foreach ($expectations as $expectation) {
-            $this->assert_select_options($expectation, $html);
+            $this->assert_select_options($expectation, $this->currentoutput);
         }
     }
 
@@ -1229,7 +1233,7 @@ abstract class qbehaviour_walkthrough_test_base extends question_testcase {
         } else if ($enabled === false) {
             $expectedattributes['disabled'] = 'disabled';
         }
-        return new question_contains_tag_with_attributes('input', $expectedattributes, $forbiddenattributes);
+        return new question_contains_tag_with_attributes('button', $expectedattributes, $forbiddenattributes);
     }
 
     /**
@@ -1389,5 +1393,37 @@ class question_test_recordset extends moodle_recordset {
 
     public function close() {
         $this->records = null;
+    }
+}
+
+/**
+ * Provide utility function for random question test
+ *
+ * @package   core_question
+ * @author     Nathan Nguyen <nathannguyen@catalyst-au.net>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class question_filter_test_helper {
+    /**
+     * Create filters base on provided values
+     *
+     * @param array $categoryids question category filter
+     * @param bool $recursive subcategories filter
+     * @param array $qtagids tags filter
+     * @return array
+     */
+    public static function create_filters(array $categoryids, bool $recursive = false, array $qtagids = []): array {
+        $filters = [
+            'category' => [
+                'jointype' => \qbank_managecategories\category_condition::JOINTYPE_DEFAULT,
+                'values' => $categoryids,
+                'filteroptions' => ['includesubcategories' => $recursive],
+            ],
+            'qtagids' => [
+                'jointype' => \qbank_tagquestion\tag_condition::JOINTYPE_DEFAULT,
+                'values' => $qtagids,
+            ],
+        ];
+        return $filters;
     }
 }

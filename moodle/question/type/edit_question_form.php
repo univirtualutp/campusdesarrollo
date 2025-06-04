@@ -256,7 +256,6 @@ abstract class question_edit_form extends question_wizard_form {
         $this->definition_inner($mform);
 
         if (core_tag_tag::is_enabled('core_question', 'question')
-            && class_exists('qbank_tagquestion\\tags_action_column')
             && \core\plugininfo\qbank::is_plugin_enabled('qbank_tagquestion')) {
             $this->add_tag_fields($mform);
         }
@@ -478,8 +477,7 @@ abstract class question_edit_form extends question_wizard_form {
             $element->setValue(array('text' => get_string($feedbackname.'default', 'question')));
 
             if ($withshownumpartscorrect && $feedbackname == 'partiallycorrectfeedback') {
-                $mform->addElement('advcheckbox', 'shownumcorrect',
-                        get_string('options', 'question'),
+                $mform->addElement('advcheckbox', 'shownumcorrect', '',
                         get_string('shownumpartscorrectwhenfinished', 'question'));
                 $mform->setDefault('shownumcorrect', true);
             }
@@ -503,8 +501,8 @@ abstract class question_edit_form extends question_wizard_form {
 
         $optionelements = array();
         if ($withclearwrong) {
-            $optionelements[] = $mform->createElement('advcheckbox', 'hintclearwrong',
-                    get_string('options', 'question'), get_string('clearwrongparts', 'question'));
+            $optionelements[] = $mform->createElement('advcheckbox', 'hintclearwrong', '',
+                    get_string('clearwrongparts', 'question'));
         }
         if ($withshownumpartscorrect) {
             $optionelements[] = $mform->createElement('advcheckbox', 'hintshownumcorrect', '',

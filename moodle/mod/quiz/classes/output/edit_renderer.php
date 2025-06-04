@@ -25,7 +25,6 @@
 namespace mod_quiz\output;
 
 use core_question\local\bank\question_version_status;
-use mod_quiz\question\bank\qbank_helper;
 use \mod_quiz\structure;
 use \html_writer;
 use qbank_previewquestion\question_preview_options;
@@ -111,11 +110,11 @@ class edit_renderer extends \plugin_renderer_base {
         // Include the contents of any other popups required.
         if ($structure->can_be_edited()) {
             $thiscontext = $contexts->lowest();
-            $this->page->requires->js_call_amd('mod_quiz/quizquestionbank', 'init', [
+            $this->page->requires->js_call_amd('mod_quiz/modal_quiz_question_bank', 'init', [
                 $thiscontext->id
             ]);
 
-            $this->page->requires->js_call_amd('mod_quiz/add_random_question', 'init', [
+            $this->page->requires->js_call_amd('mod_quiz/modal_add_random_question', 'init', [
                 $thiscontext->id,
                 $pagevars['cat'],
                 $pageurl->out_as_local_url(true),
@@ -608,7 +607,6 @@ class edit_renderer extends \plugin_renderer_base {
             return '';
         }
         $menu = new \action_menu();
-        $menu->set_constraint('.mod-quiz-edit-content');
         $trigger = html_writer::tag('span', get_string('add', 'quiz'), ['class' => 'add-menu']);
         $menu->set_menu_trigger($trigger);
         // The menu appears within an absolutely positioned element causing width problems.
@@ -681,7 +679,7 @@ class edit_renderer extends \plugin_renderer_base {
         if ($structure->can_add_random_questions()) {
             $returnurl = new \moodle_url('/mod/quiz/edit.php', ['cmid' => $structure->get_cmid(), 'data-addonpage' => $page]);
             $params = ['returnurl' => $returnurl, 'cmid' => $structure->get_cmid(), 'appendqnumstring' => 'addarandomquestion'];
-            $url = new \moodle_url('/mod/quiz/addrandom.php', $params);
+            $url = new \moodle_url('/mod/quiz/edit.php', $params);
             $icon = new \pix_icon('t/add', $str->addarandomquestion, 'moodle', ['class' => 'iconsmall', 'title' => '']);
             $attributes = ['class' => 'cm-edit-action addarandomquestion', 'data-action' => 'addarandomquestion'];
             if ($page) {
@@ -1035,7 +1033,7 @@ class edit_renderer extends \plugin_renderer_base {
         $namestr = $qtype->local_name();
 
         $icon = $this->pix_icon('icon', $namestr, $qtype->plugin_name(), ['title' => $namestr,
-                'class' => 'activityicon', 'alt' => ' ', 'role' => 'presentation']);
+                'class' => 'activityicon', 'alt' => $namestr]);
 
         $editicon = $this->pix_icon('t/edit', '', 'moodle', ['title' => '']);
 
@@ -1067,20 +1065,18 @@ class edit_renderer extends \plugin_renderer_base {
 
         $temp = clone($question);
         $temp->questiontext = '';
-        $temp->name = qbank_helper::describe_random_question($slot);
+        $temp->name = $structure->describe_random_slot($slot->id);
         $instancename = quiz_question_tostring($temp);
 
         $configuretitle = get_string('configurerandomquestion', 'quiz');
         $qtype = \question_bank::get_qtype($question->qtype, false);
         $namestr = $qtype->local_name();
-        $icon = $this->pix_icon('icon', $namestr, $qtype->plugin_name(), ['title' => $namestr,
-                'class' => 'icon activityicon', 'alt' => ' ', 'role' => 'presentation']);
+        $icon = $this->pix_icon('icon', $namestr, $qtype->plugin_name(), ['class' => 'icon activityicon']);
 
         $editicon = $this->pix_icon('t/edit', $configuretitle, 'moodle', ['title' => '']);
         $qbankurlparams = [
             'cmid' => $structure->get_cmid(),
             'cat' => $slot->category . ',' . $slot->contextid,
-            'recurse' => $slot->randomrecurse,
         ];
 
         $slottags = [];

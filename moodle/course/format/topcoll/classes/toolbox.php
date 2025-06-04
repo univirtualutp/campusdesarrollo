@@ -23,25 +23,32 @@
  * code change. Full installation instructions, code adaptions and credits are included in the 'Readme.txt' file.
  *
  * @package    format_topcoll
- * @version    See the value of '$plugin->version' in version.php.
  * @copyright  &copy; 2017-onwards G J Barnard in respect to modifications of standard topics format.
- * @author     G J Barnard - {@link http://moodle.org/user/profile.php?id=442195}
- * @link       http://docs.moodle.org/en/Collapsed_Topics_course_format
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- *
+ * @author     G J Barnard - {@link https://moodle.org/user/profile.php?id=442195}
+ * @link       https://docs.moodle.org/en/Collapsed_Topics_course_format
+ * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace format_topcoll;
 
+/**
+ * Toolbox class.
+ */
 class toolbox {
-
+    /** @var class $instance us */
     protected static $instance;
 
-    const TOPCOLL_TOGGLE = 'topcoll_toggle';
-
+    /**
+     * Constructor.
+     */
     private function __construct() {
     }
 
+    /**
+     * Get the instance of us.
+     *
+     * @return us.
+     */
     public static function get_instance() {
         if (!is_object(self::$instance)) {
             self::$instance = new self();
@@ -60,15 +67,15 @@ class toolbox {
         $hex = str_replace("#", "", $hex);
 
         if (strlen($hex) == 3) {
-            $r = hexdec(substr($hex, 0, 1).substr($hex, 0, 1));
-            $g = hexdec(substr($hex, 1, 1).substr($hex, 1, 1));
-            $b = hexdec(substr($hex, 2, 1).substr($hex, 2, 1));
+            $r = hexdec(substr($hex, 0, 1) . substr($hex, 0, 1));
+            $g = hexdec(substr($hex, 1, 1) . substr($hex, 1, 1));
+            $b = hexdec(substr($hex, 2, 1) . substr($hex, 2, 1));
         } else {
             $r = hexdec(substr($hex, 0, 2));
             $g = hexdec(substr($hex, 2, 2));
             $b = hexdec(substr($hex, 4, 2));
         }
-        $rgb = array('r' => $r, 'g' => $g, 'b' => $b);
+        $rgb = ['r' => $r, 'g' => $g, 'b' => $b];
         return $rgb; // Returns the rgb as an array.
     }
 
@@ -82,6 +89,6 @@ class toolbox {
     public static function hex2rgba($hex, $alpha) {
         $rgba = self::hex2rgb($hex);
         $rgba[] = $alpha;
-        return 'rgba('.implode(", ", $rgba).')'; // Returns the rgba values separated by commas.
+        return 'rgba(' . implode(", ", $rgba) . ')'; // Returns the rgba values separated by commas.
     }
 }

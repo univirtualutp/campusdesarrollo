@@ -23,37 +23,44 @@
  * code change. Full installation instructions, code adaptions and credits are included in the 'Readme.txt' file.
  *
  * @package    format_topcoll
- * @version    See the value of '$plugin->version' in version.php.
  * @copyright  &copy; 2012-onwards G J Barnard in respect to modifications of standard topics format.
- * @author     G J Barnard - gjbarnard at gmail dot com and {@link http://moodle.org/user/profile.php?id=442195}
- * @link       http://docs.moodle.org/en/Collapsed_Topics_course_format
- * @license    http://www.gnu.org/copyleft/gpl.html GNU Public License
- *
+ * @author     G J Barnard - {@link https://moodle.org/user/profile.php?id=442195}
+ * @link       https://docs.moodle.org/en/Collapsed_Topics_course_format
+ * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+// phpcs:disable moodle.NamingConventions.ValidVariableName.MemberNameUnderscore
+// phpcs:disable moodle.NamingConventions.ValidVariableName.VariableNameLowerCase
+// phpcs:disable moodle.NamingConventions.ValidFunctionName.LowercaseMethod
+// phpcs:disable PSR2.Methods.MethodDeclaration.Underscore
+
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
-require_once($CFG->dirroot."/lib/pear/HTML/QuickForm/text.php");
+require_once($CFG->dirroot . "/lib/pear/HTML/QuickForm/text.php");
 
 /**
  * HTML class for a colour popup type element
  *
  * @author       Iain Checkland - modified from ColourPicker by Jamie Pratt [thanks]
- * @access       public
  */
 class MoodleQuickForm_tccolourpopup extends HTML_QuickForm_text implements templatable {
     use templatable_form_element {
         export_for_template as export_for_template_base;
     }
 
-    /*
-     * html for help button, if empty then no help
-     *
-     * @var string
+    /**
+     * @var string $_helpbutton html for help button, if empty then no help.
      */
     public $_helpbutton = '';
+    /**
+     * @var bool $_hiddenLabel.
+     */
     public $_hiddenLabel = false;
 
+    /**
+     * Constructor.
+     */
     public function __construct($elementname = null, $elementlabel = null, $attributes = null, $options = null) {
         parent::__construct($elementname, $elementlabel, $attributes);
         /* Pretend we are a 'static' MoodleForm element so that we get the core_form/element-static template where
@@ -62,15 +69,21 @@ class MoodleQuickForm_tccolourpopup extends HTML_QuickForm_text implements templ
         $this->setType('static');
     }
 
+    /**
+     * setHiddenLabel.
+     */
     public function setHiddenLabel($hiddenLabel) {
         $this->_hiddenLabel = $hiddenLabel;
     }
 
+    /**
+     * toHtml.
+     */
     public function toHtml() {
         global $PAGE;
         $id = $this->getAttribute('id');
         $PAGE->requires->js('/course/format/topcoll/js/tc_colourpopup.js');
-        $PAGE->requires->js_init_call('M.util.init_tccolour_popup', array($id));
+        $PAGE->requires->js_init_call('M.util.init_tccolour_popup', [$id]);
         $value = $this->getValue();
         if (!empty($value)) {
             if ($value[0] == '#') {
@@ -84,19 +97,18 @@ class MoodleQuickForm_tccolourpopup extends HTML_QuickForm_text implements templ
             $value = '-';
             $colour = $this->getAttribute('defaultcolour');
         }
-        $content = "<input size='5' name='" . $this->getName() . "' value='" . $value . "' initvalue='".$colour."' id='{$id}' type='text' " .
-            $this->_getAttrString($this->_attributes) . " >";
-        $content .= html_writer::tag('span', '&nbsp;', array(
-            'id' => 'colpicked_'.$id,
+        $content = "<input size='5' name='" . $this->getName() . "' value='" . $value . "' initvalue='" .
+            $colour . "' id='{$id}' type='text' " . $this->_getAttrString($this->_attributes) . " >";
+        $content .= html_writer::tag('span', '&nbsp;', [
+            'id' => 'colpicked_' . $id,
             'class' => 'tccolourpopupbox',
             'tabindex' => '-1',
-            'style' => 'background-color: #'.$colour.';')
-        );
-        $content .= html_writer::start_tag('div', array(
+            'style' => 'background-color: #' . $colour . ';', ]);
+        $content .= html_writer::start_tag('div', [
             'id' => 'colpick_' . $id,
             'style' => "display: none;",
-            'class' => 'tccolourpopupsel form-colourpicker defaultsnext'));
-        $content .= html_writer::tag('div', '', array('class' => 'admin_colourpicker clearfix'));
+            'class' => 'tccolourpopupsel form-colourpicker defaultsnext', ]);
+        $content .= html_writer::tag('div', '', ['class' => 'admin_colourpicker clearfix']);
         $content .= html_writer::end_tag('div');
         return $content;
     }
@@ -114,7 +126,7 @@ class MoodleQuickForm_tccolourpopup extends HTML_QuickForm_text implements templ
         static $idx = 1;
 
         if (!$this->getAttribute('id')) {
-            $this->updateAttributes(array('id' => 'id_' . substr(md5(microtime() . $idx++), 0, 6)));
+            $this->updateAttributes(['id' => 'id_' . substr(md5(microtime() . $idx++), 0, 6)]);
         }
     }
 
@@ -152,6 +164,11 @@ class MoodleQuickForm_tccolourpopup extends HTML_QuickForm_text implements templ
         }
     }
 
+    /**
+     * export_for_template
+     *
+     * @return string
+     */
     public function export_for_template(renderer_base $output) {
         $context = $this->export_for_template_base($output);
         $context['html'] = $this->toHtml();

@@ -32,8 +32,11 @@ use Behat\Mink\Element\NodeElement;
 use Behat\Mink\Exception\DriverException;
 use Behat\Mink\Exception\ElementNotFoundException;
 use Behat\Mink\Exception\ExpectationException;
+use Facebook\WebDriver\Exception\NoSuchAlertException;
 use Facebook\WebDriver\Exception\NoSuchElementException;
 use Facebook\WebDriver\Exception\StaleElementReferenceException;
+use Facebook\WebDriver\WebDriverAlert;
+use Facebook\WebDriver\WebDriverExpectedCondition;
 
 /**
  * Cross component steps definitions.
@@ -148,7 +151,7 @@ class behat_general extends behat_base {
 
         } else if (!empty($url)) {
             // We redirect directly as we can not wait for an automatic redirection.
-            $this->getSession()->getDriver()->getClient()->request('get', $url);
+            $this->getSession()->getDriver()->getClient()->request('GET', $url);
 
         } else {
             // Reload the page if no URL was provided.
@@ -200,7 +203,7 @@ class behat_general extends behat_base {
     /**
      * Switches to the specified window. Useful when interacting with popup windows.
      *
-     * @Given /^I switch to "(?P<window_name_string>(?:[^"]|\\")*)" window$/
+     * @Given /^I switch to "(?P<window_name_string>(?:[^"]|\\")*)" (window|tab)$/
      * @param string $windowname
      */
     public function switch_to_window($windowname) {
@@ -232,7 +235,7 @@ class behat_general extends behat_base {
     /**
      * Switches to the main Moodle window. Useful when you finish interacting with popup windows.
      *
-     * @Given /^I switch to the main window$/
+     * @Given /^I switch to the main (window|tab)$/
      */
     public function switch_to_the_main_window() {
         $this->switch_to_window(self::MAIN_WINDOW_NAME);
@@ -263,11 +266,24 @@ class behat_general extends behat_base {
     }
 
     /**
+     * Wait for an alert to be displayed.
+     *
+     * @return WebDriverAlert
+     */
+    public function wait_for_alert(): WebDriverAlert {
+        $webdriver = $this->getSession()->getDriver()->getWebdriver();
+        $webdriver->wait()->until(WebDriverExpectedCondition::alertIsPresent());
+
+        return $webdriver->switchTo()->alert();
+    }
+
+    /**
      * Accepts the currently displayed alert dialog. This step does not work in all the browsers, consider it experimental.
      * @Given /^I accept the currently displayed dialog$/
      */
     public function accept_currently_displayed_alert_dialog() {
-        $this->getSession()->getDriver()->getWebDriver()->switchTo()->alert()->accept();
+        $alert = $this->wait_for_alert();
+        $alert->accept();
     }
 
     /**
@@ -275,7 +291,8 @@ class behat_general extends behat_base {
      * @Given /^I dismiss the currently displayed dialog$/
      */
     public function dismiss_currently_displayed_alert_dialog() {
-        $this->getSession()->getDriver()->getWebDriver()->switchTo()->alert()->dismiss();
+        $alert = $this->wait_for_alert();
+        $alert->dismiss();
     }
 
     /**
@@ -286,9 +303,7 @@ class behat_general extends behat_base {
      * @param string $link
      */
     public function click_link($link) {
-
         $linknode = $this->find_link($link);
-        $this->ensure_node_is_visible($linknode);
         $linknode->click();
     }
 
@@ -372,7 +387,7 @@ class behat_general extends behat_base {
     /**
      * Generic mouse over action. Mouse over a element of the specified type.
      *
-     * @When /^I hover over the "(?P<element_string>(?:[^"]|\\")*)" "(?P<selector_string>[^"]*) in the "(?P<container_element_string>(?:[^"]|\\")*)" "(?P<container_selector_string>[^"]*)"$/
+     * @When I hover over the :element :selectortype in the :containerelement :containerselectortype
      * @param string $element Element we look for
      * @param string $selectortype The type of what we look for
      * @param string $containerelement Element we look for
@@ -380,7 +395,7 @@ class behat_general extends behat_base {
      */
     public function i_hover_in_the(string $element, $selectortype, string $containerelement, $containerselectortype): void {
         // Gets the node based on the requested selector type and locator.
-        $node = $this->get_node_in_container($selectortype, $element, $containerselectortype, $containerselectortype);
+        $node = $this->get_node_in_container($selectortype, $element, $containerselectortype, $containerelement);
         $this->execute_js_on_node($node, '{{ELEMENT}}.scrollIntoView();');
         $node->mouseOver();
     }
@@ -393,11 +408,8 @@ class behat_general extends behat_base {
      * @param string $selectortype The type of what we look for
      */
     public function i_click_on($element, $selectortype) {
-
         // Gets the node based on the requested selector type and locator.
-        $node = $this->get_selected_node($selectortype, $element);
-        $this->ensure_node_is_visible($node);
-        $node->click();
+        $this->get_selected_node($selectortype, $element)->click();
     }
 
     /**
@@ -458,9 +470,7 @@ class behat_general extends behat_base {
      * @param string $nodeselectortype The type of selector where we look in
      */
     public function i_click_on_in_the($element, $selectortype, $nodeelement, $nodeselectortype) {
-
         $node = $this->get_node_in_container($selectortype, $element, $nodeselectortype, $nodeelement);
-        $this->ensure_node_is_visible($node);
         $node->click();
     }
 
@@ -502,7 +512,6 @@ class behat_general extends behat_base {
         }
 
         $node = $this->get_node_in_container($selectortype, $element, $nodeselectortype, $nodeelement);
-        $this->ensure_node_is_visible($node);
 
         // KeyUP and KeyDown require the element to be displayed in the current window.
         $this->execute_js_on_node($node, '{{ELEMENT}}.scrollIntoView();');
@@ -1322,12 +1331,22 @@ EOF;
      * browser window has same viewport size even when you run Behat on multiple operating systems.
      *
      * @throws ExpectationException
-     * @Then /^I change (window|viewport) size to "(mobile|tablet|small|medium|large|\d+x\d+)"$/
-     * @Then /^I change the (window|viewport) size to "(mobile|tablet|small|medium|large|\d+x\d+)"$/
+     * @Then /^I change (window|viewport) size to "(mobile|tablet|small|medium|large|\d+x\d+)"( without runtime scaling)?$/
+     * @Then /^I change the (window|viewport) size to "(mobile|tablet|small|medium|large|\d+x\d+)"( without runtime scaling)?$/
+     * @param string $windowviewport Whether this is a window or viewport size hcange
      * @param string $windowsize size of the window (mobile|tablet|small|medium|large|wxh).
+     * @param null|string $scale whether to lock runtime scaling (string) or to allow it (null)
      */
-    public function i_change_window_size_to($windowviewport, $windowsize) {
-        $this->resize_window($windowsize, $windowviewport === 'viewport');
+    public function i_change_window_size_to(
+        $windowviewport,
+        $windowsize,
+        ?string $scale = null,
+    ): void {
+        $this->resize_window(
+            $windowsize,
+            $windowviewport === 'viewport',
+            $scale === null,
+        );
     }
 
     /**
@@ -1427,37 +1446,14 @@ EOF;
 
         $rowliteral = behat_context_helper::escape($row);
         $valueliteral = behat_context_helper::escape($value);
-        $columnliteral = behat_context_helper::escape($column);
 
-        if (preg_match('/^-?(\d+)-?$/', $column, $columnasnumber)) {
-            // Column indicated as a number, just use it as position of the column.
-            $columnpositionxpath = "/child::*[position() = {$columnasnumber[1]}]";
-        } else {
-            // Header can be in thead or tbody (first row), following xpath should work.
-            $theadheaderxpath = "thead/tr[1]/th[(normalize-space(.)=" . $columnliteral . " or a[normalize-space(text())=" .
-                    $columnliteral . "] or div[normalize-space(text())=" . $columnliteral . "])]";
-            $tbodyheaderxpath = "tbody/tr[1]/td[(normalize-space(.)=" . $columnliteral . " or a[normalize-space(text())=" .
-                    $columnliteral . "] or div[normalize-space(text())=" . $columnliteral . "])]";
-
-            // Check if column exists.
-            $columnheaderxpath = $tablexpath . "[" . $theadheaderxpath . " | " . $tbodyheaderxpath . "]";
-            $columnheader = $this->getSession()->getDriver()->find($columnheaderxpath);
-            if (empty($columnheader)) {
-                $columnexceptionmsg = $column . '" in table "' . $table . '"';
-                throw new ElementNotFoundException($this->getSession(), "\n$columnheaderxpath\n\n".'Column', null, $columnexceptionmsg);
-            }
-            // Following conditions were considered before finding column count.
-            // 1. Table header can be in thead/tr/th or tbody/tr/td[1].
-            // 2. First column can have th (Gradebook -> user report), so having lenient sibling check.
-            $columnpositionxpath = "/child::*[position() = count(" . $tablexpath . "/" . $theadheaderxpath .
-                "/preceding-sibling::*) + 1]";
-        }
+        $columnpositionxpath = $this->get_table_column_xpath($table, $column);
 
         // Check if value exists in specific row/column.
         // Get row xpath.
-        // GoutteDriver uses DomCrawler\Crawler and it is making XPath relative to the current context, so use descendant.
-        $rowxpath = $tablexpath."/tbody/tr[descendant::th[normalize-space(.)=" . $rowliteral .
-                    "] | descendant::td[normalize-space(.)=" . $rowliteral . "]]";
+        // Some drivers make XPath relative to the current context, so use descendant.
+        $rowxpath = $tablexpath . "/tbody/tr[descendant::*[@class='rowtitle'][normalize-space(.)=" . $rowliteral . "] | " . "
+            descendant::th[normalize-space(.)=" . $rowliteral . "] | descendant::td[normalize-space(.)=" . $rowliteral . "]]";
 
         $columnvaluexpath = $rowxpath . $columnpositionxpath . "[contains(normalize-space(.)," . $valueliteral . ")]";
 
@@ -1494,6 +1490,99 @@ EOF;
     }
 
     /**
+     * Get xpath for a row child that corresponds to the specified column header
+     *
+     * @param string $table table identifier that can be used with 'table' node selector (i.e. table title or CSS class)
+     * @param string $column either text in the column header or the column number, such as -1-, -2-, etc
+     *      When matching the column header it has to be either exact match of the whole header or an exact
+     *      match of a text inside a link in the header.
+     *      For example, to match "<a>First name</a> / <a>Last name</a>" you need to specify either "First name" or "Last name"
+     * @return string
+     */
+    protected function get_table_column_xpath(string $table, string $column): string {
+        $tablenode = $this->get_selected_node('table', $table);
+        $tablexpath = $tablenode->getXpath();
+        $columnliteral = behat_context_helper::escape($column);
+        if (preg_match('/^-?(\d+)-?$/', $column, $columnasnumber)) {
+            // Column indicated as a number, just use it as position of the column.
+            $columnpositionxpath = "/child::*[position() = {$columnasnumber[1]}]";
+        } else {
+            // Header can be in thead or tbody (first row), following xpath should work.
+            $theadheaderxpath = "thead/tr[1]/th[(normalize-space(.)={$columnliteral} or a[normalize-space(text())=" .
+                    $columnliteral . "] or div[normalize-space(text())={$columnliteral}])]";
+            $tbodyheaderxpath = "tbody/tr[1]/td[(normalize-space(.)={$columnliteral} or a[normalize-space(text())=" .
+                    $columnliteral . "] or div[normalize-space(text())={$columnliteral}])]";
+
+            // Check if column exists.
+            $columnheaderxpath = "{$tablexpath}[{$theadheaderxpath} | {$tbodyheaderxpath}]";
+            $columnheader = $this->getSession()->getDriver()->find($columnheaderxpath);
+            if (empty($columnheader)) {
+                if (strpos($column, '/') !== false) {
+                    // We are not able to match headers consisting of several links, such as "First name / Last name".
+                    // Instead we can match "First name" or "Last name" or "-1-" (column number).
+                    throw new Exception("Column matching locator \"$column\" not found. ".
+                        "If the column header contains multiple links, specify only one of the link texts. ".
+                        "Otherwise, use the column number as the locator");
+                }
+                $columnexceptionmsg = $column . '" in table "' . $table . '"';
+                throw new ElementNotFoundException($this->getSession(), "\n$columnheaderxpath\n\n".'Column',
+                    null, $columnexceptionmsg);
+            }
+            // Following conditions were considered before finding column count.
+            // 1. Table header can be in thead/tr/th or tbody/tr/td[1].
+            // 2. First column can have th (Gradebook -> user report), so having lenient sibling check.
+            $columnpositionxpath = "/child::*[position() = count({$tablexpath}/{$theadheaderxpath}" .
+                "/preceding-sibling::*) + 1]";
+        }
+        return $columnpositionxpath;
+    }
+
+    /**
+     * Find a table row where each of the specified columns matches and throw exception if not found
+     *
+     * @param string $table table locator
+     * @param array $cells key is the column locator (name or index such as '-1-') and value is the text contents of the table cell
+     */
+    protected function ensure_table_row_exists(string $table, array $cells): void {
+        $tablenode = $this->get_selected_node('table', $table);
+        $tablexpath = $tablenode->getXpath();
+
+        $columnconditions = [];
+        foreach ($cells as $columnname => $value) {
+            $valueliteral = behat_context_helper::escape($value);
+            $columnpositionxpath = $this->get_table_column_xpath($table, $columnname);
+            $columnconditions[] = '.' . $columnpositionxpath . "[contains(normalize-space(.)," . $valueliteral . ")]";
+        }
+        $rowxpath = $tablexpath . "/tbody/tr[" . join(' and ', $columnconditions) . ']';
+
+        $rownode = $this->getSession()->getDriver()->find($rowxpath);
+        if (empty($rownode)) {
+            $rowlocator = array_map(fn($k) => "{$k} => {$cells[$k]}", array_keys($cells));
+            throw new ElementNotFoundException($this->getSession(), "\n$rowxpath\n\n".'Table row', null, join(', ', $rowlocator));
+        }
+    }
+
+    /**
+     * Find a table row where each of the specified columns matches and throw exception if found
+     *
+     * @param string $table table locator
+     * @param array $cells key is the column locator (name or index such as '-1-') and value is the text contents of the table cell
+     */
+    protected function ensure_table_row_does_not_exist(string $table, array $cells): void {
+        try {
+            $this->ensure_table_row_exists($table, $cells);
+            // Throw exception if found.
+        } catch (ElementNotFoundException $e) {
+            // Table row/column doesn't contain this value. Nothing to do.
+            return;
+        }
+        $rowlocator = array_map(fn($k) => "{$k} => {$cells[$k]}", array_keys($cells));
+        throw new ExpectationException('Table row "' . join(', ', $rowlocator) .
+            '" is present in the table "' . $table . '"', $this->getSession()
+        );
+    }
+
+    /**
      * Checks that the provided value exist in table.
      *
      * First row may contain column headers or numeric indexes of the columns
@@ -1509,21 +1598,21 @@ EOF;
      */
     public function following_should_exist_in_the_table($table, TableNode $data) {
         $datahash = $data->getHash();
+        if ($datahash && count($data->getRow(0)) != count($datahash[0])) {
+            // Check that the number of columns in the hash is the same as the number of the columns in the first row.
+            throw new coding_exception('Table contains duplicate column headers');
+        }
 
         foreach ($datahash as $row) {
-            $firstcell = null;
-            foreach ($row as $column => $value) {
-                if ($firstcell === null) {
-                    $firstcell = $value;
-                } else {
-                    $this->row_column_of_table_should_contain($firstcell, $column, $table, $value);
-                }
-            }
+            $this->ensure_table_row_exists($table, $row);
         }
     }
 
     /**
      * Checks that the provided values do not exist in a table.
+     *
+     * If there are more than two columns, we check that NEITHER of the columns 2..n match
+     * in the row where the first column matches
      *
      * @Then /^the following should not exist in the "(?P<table_string>[^"]*)" table:$/
      * @throws ExpectationException
@@ -1534,20 +1623,24 @@ EOF;
      */
     public function following_should_not_exist_in_the_table($table, TableNode $data) {
         $datahash = $data->getHash();
+        if ($datahash && count($data->getRow(0)) != count($datahash[0])) {
+            // Check that the number of columns in the hash is the same as the number of the columns in the first row.
+            throw new coding_exception('Table contains duplicate column headers');
+        }
 
         foreach ($datahash as $value) {
-            $row = array_shift($value);
-            foreach ($value as $column => $value) {
-                try {
-                    $this->row_column_of_table_should_contain($row, $column, $table, $value);
-                    // Throw exception if found.
-                } catch (ElementNotFoundException $e) {
-                    // Table row/column doesn't contain this value. Nothing to do.
-                    continue;
+            if (count($value) > 2) {
+                // When there are more than two columns, what we really want to check is that for the rows
+                // where the first column matches, NEITHER of the other columns match.
+                $columns = array_keys($value);
+                for ($i = 1; $i < count($columns); $i++) {
+                    $this->ensure_table_row_does_not_exist($table, [
+                        $columns[0] => $value[$columns[0]],
+                        $columns[$i] => $value[$columns[$i]],
+                    ]);
                 }
-                throw new ExpectationException('"' . $column . '" with value "' . $value . '" is present in "' .
-                    $row . '"  row for table "' . $table . '"', $this->getSession()
-                );
+            } else {
+                $this->ensure_table_row_does_not_exist($table, $value);
             }
         }
     }
@@ -1555,15 +1648,24 @@ EOF;
     /**
      * Given the text of a link, download the linked file and return the contents.
      *
-     * This is a helper method used by {@link following_should_download_bytes()}
-     * and {@link following_should_download_between_and_bytes()}
+     * A helper method used by the steps in {@see behat_download}, and the legacy
+     * {@see following_should_download_bytes()} and {@see following_should_download_between_and_bytes()}.
      *
      * @param string $link the text of the link.
+     * @param string $containerlocator optional container element locator.
+     * @param string $containertype optional container element selector type.
+     *
      * @return string the content of the downloaded file.
      */
-    public function download_file_from_link($link) {
+    public function download_file_from_link(string $link, string $containerlocator = '', string $containertype = ''): string {
+
         // Find the link.
-        $linknode = $this->find_link($link);
+        if ($containerlocator !== '' && $containertype !== '') {
+            $linknode = $this->get_node_in_container('link', $link, $containertype, $containerlocator);
+        } else {
+            $linknode = $this->find_link($link);
+        }
+
         $this->ensure_node_is_visible($linknode);
 
         // Get the href and check it.
@@ -1584,6 +1686,8 @@ EOF;
 
     /**
      * Downloads the file from a link on the page and checks the size.
+     *
+     * Not recommended any more. The steps in {@see behat_download} are much better!
      *
      * Only works if the link has an href attribute. Javascript downloads are
      * not supported. Currently, the href must be an absolute URL.
@@ -1618,6 +1722,8 @@ EOF;
     /**
      * Downloads the file from a link on the page and checks the size is in a given range.
      *
+     * Not recommended any more. The steps in {@see behat_download} are much better!
+     *
      * Only works if the link has an href attribute. Javascript downloads are
      * not supported. Currently, the href must be an absolute URL.
      *
@@ -1625,10 +1731,11 @@ EOF;
      * be between "5" and "10" bytes, and between "10" and "20" bytes.
      *
      * @Then /^following "(?P<link_string>[^"]*)" should download between "(?P<min_bytes>\d+)" and "(?P<max_bytes>\d+)" bytes$/
-     * @throws ExpectationException
+     *
      * @param string $link the text of the link.
      * @param number $minexpectedsize the minimum expected file size in bytes.
      * @param number $maxexpectedsize the maximum expected file size in bytes.
+     * @throws ExpectationException
      */
     public function following_should_download_between_and_bytes($link, $minexpectedsize, $maxexpectedsize) {
         // If the minimum is greater than the maximum then swap the values.
@@ -1802,7 +1909,7 @@ EOF;
 
     /**
      * Presses a given button in the browser.
-     * NOTE: Phantomjs and goutte driver reloads page while navigating back and forward.
+     * NOTE: Phantomjs and browserkit driver reloads page while navigating back and forward.
      *
      * @Then /^I press the "(back|forward|reload)" button in the browser$/
      * @param string $button the button to press.
@@ -2358,4 +2465,36 @@ EOF;
         }
     }
 
+    /**
+     * Check that the page title contains a given string.
+     *
+     * @Given the page title should contain ":title"
+     * @param string $title The string that should be present on the page title.
+     */
+    public function the_page_title_should_contain(string $title): void {
+        $session = $this->getSession();
+        if ($this->running_javascript()) {
+            // When running on JS, the page title can be changed via JS, so it's more reliable to get the actual page title via JS.
+            $actualtitle = $session->evaluateScript("return document.title");
+        } else {
+            $titleelement = $session->getPage()->find('css', 'head title');
+            if ($titleelement === null) {
+                // Throw an exception if a page title is not present on the page.
+                throw new ElementNotFoundException(
+                    $this->getSession(),
+                    '<title> element',
+                    'css',
+                    'head title'
+                );
+            }
+            $actualtitle = $titleelement->getText();
+        }
+
+        if (!str_contains($actualtitle, $title)) {
+            throw new ExpectationException(
+                "'$title' was not found from the current page title '$actualtitle'",
+                $session
+            );
+        }
+    }
 }

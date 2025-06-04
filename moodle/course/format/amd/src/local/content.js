@@ -54,13 +54,15 @@ export default class Component extends BaseComponent {
             SECTION_CMLIST: `[data-for='cmlist']`,
             COURSE_SECTIONLIST: `[data-for='course_sectionlist']`,
             CM: `[data-for='cmitem']`,
-            PAGE: `#page`,
             TOGGLER: `[data-action="togglecoursecontentsection"]`,
             COLLAPSE: `[data-toggle="collapse"]`,
             TOGGLEALL: `[data-toggle="toggleall"]`,
             // Formats can override the activity tag but a default one is needed to create new elements.
             ACTIVITYTAG: 'li',
             SECTIONTAG: 'li',
+        };
+        this.selectorGenerators = {
+            cmNameFor: (id) => `[data-cm-name-for='${id}']`,
         };
         // Default classes to toggle on refresh.
         this.classes = {
@@ -146,7 +148,7 @@ export default class Component extends BaseComponent {
 
         // Capture page scroll to update page item.
         this.addEventListener(
-            document.querySelector(this.selectors.PAGE),
+            document,
             "scroll",
             this._scrollHandler
         );
@@ -173,15 +175,12 @@ export default class Component extends BaseComponent {
             const toggler = section.querySelector(this.selectors.COLLAPSE);
             const isCollapsed = toggler?.classList.contains(this.classes.COLLAPSED) ?? false;
 
-            if (isChevron || isCollapsed) {
-                // Update the state.
-                const sectionId = section.getAttribute('data-id');
-                this.reactive.dispatch(
-                    'sectionContentCollapsed',
-                    [sectionId],
-                    !isCollapsed
-                );
-            }
+            const sectionId = section.getAttribute('data-id');
+            this.reactive.dispatch(
+                'sectionContentCollapsed',
+                [sectionId],
+                !isCollapsed,
+            );
         }
     }
 
@@ -227,6 +226,8 @@ export default class Component extends BaseComponent {
             {watch: `cm.stealth:updated`, handler: this._reloadCm},
             {watch: `cm.sectionid:updated`, handler: this._reloadCm},
             {watch: `cm.indent:updated`, handler: this._reloadCm},
+            {watch: `cm.groupmode:updated`, handler: this._reloadCm},
+            {watch: `cm.name:updated`, handler: this._refreshCmName},
             // Update section number and title.
             {watch: `section.number:updated`, handler: this._refreshSectionNumber},
             // Collapse and expand sections.
@@ -235,9 +236,28 @@ export default class Component extends BaseComponent {
             {watch: `transaction:start`, handler: this._startProcessing},
             {watch: `course.sectionlist:updated`, handler: this._refreshCourseSectionlist},
             {watch: `section.cmlist:updated`, handler: this._refreshSectionCmlist},
+            // Section visibility.
+            {watch: `section.visible:updated`, handler: this._reloadSection},
             // Reindex sections and cms.
             {watch: `state:updated`, handler: this._indexContents},
         ];
+    }
+
+    /**
+     * Update a course module name on the whole page.
+     *
+     * @param {object} param
+     * @param {Object} param.element details the update details.
+     */
+    _refreshCmName({element}) {
+        // Update classes.
+        // Replace the text content of the cm name.
+        const allCmNamesFor = this.getElements(
+            this.selectorGenerators.cmNameFor(element.id)
+        );
+        allCmNamesFor.forEach((cmNameFor) => {
+            cmNameFor.textContent = element.name;
+        });
     }
 
     /**
@@ -338,7 +358,7 @@ export default class Component extends BaseComponent {
      * Check the current page scroll and update the active element if necessary.
      */
     _scrollHandler() {
-        const pageOffset = document.querySelector(this.selectors.PAGE).scrollTop;
+        const pageOffset = window.scrollY;
         const items = this.reactive.getExporter().allItemsArray(this.reactive.state);
         // Check what is the active element now.
         let pageItem = null;
@@ -349,10 +369,6 @@ export default class Component extends BaseComponent {
             }
 
             const element = index[item.id].element;
-            // Activities without url can only be page items in edit mode.
-            if (item.type === 'cm' && !item.url && !this.reactive.isEditing) {
-                return pageOffset >= element.offsetTop;
-            }
             pageItem = item;
             return pageOffset >= element.offsetTop;
         });
@@ -526,12 +542,12 @@ export default class Component extends BaseComponent {
         if (debouncedReload) {
             return debouncedReload;
         }
-        const pendingReload = new Pending(pendingKey);
         const reload = () => {
+            const pendingReload = new Pending(pendingKey);
             this.debouncedReloads.delete(pendingKey);
             const cmitem = this.getElement(this.selectors.CM, cmId);
             if (!cmitem) {
-                return;
+                return pendingReload.resolve();
             }
             const promise = Fragment.loadFragment(
                 'core_courseformat',
@@ -544,15 +560,43 @@ export default class Component extends BaseComponent {
                 }
             );
             promise.then((html, js) => {
+                // Other state change can reload the CM or the section before this one.
+                if (!document.contains(cmitem)) {
+                    pendingReload.resolve();
+                    return false;
+                }
                 Templates.replaceNode(cmitem, html, js);
                 this._indexContents();
                 pendingReload.resolve();
-                return;
-            }).catch();
+                return true;
+            }).catch(() => {
+                pendingReload.resolve();
+            });
+            return pendingReload;
         };
-        debouncedReload = debounce(reload, 200);
+        debouncedReload = debounce(
+            reload,
+            200,
+            {
+                cancel: true, pending: true
+            }
+        );
         this.debouncedReloads.set(pendingKey, debouncedReload);
         return debouncedReload;
+    }
+
+    /**
+     * Cancel the active reload CM debounced function, if any.
+     * @param {Number} cmId
+     */
+    _cancelDebouncedReloadCm(cmId) {
+        const pendingKey = `courseformat/content:reloadCm_${cmId}`;
+        const debouncedReload = this.debouncedReloads.get(pendingKey);
+        if (!debouncedReload) {
+            return;
+        }
+        debouncedReload.cancel();
+        this.debouncedReloads.delete(pendingKey);
     }
 
     /**
@@ -568,6 +612,10 @@ export default class Component extends BaseComponent {
         const pendingReload = new Pending(`courseformat/content:reloadSection_${element.id}`);
         const sectionitem = this.getElement(this.selectors.SECTION, element.id);
         if (sectionitem) {
+            // Cancel any pending reload because the section will reload cms too.
+            for (const cmId of element.cmlist) {
+                this._cancelDebouncedReloadCm(cmId);
+            }
             const promise = Fragment.loadFragment(
                 'core_courseformat',
                 'section',
@@ -582,8 +630,9 @@ export default class Component extends BaseComponent {
                 Templates.replaceNode(sectionitem, html, js);
                 this._indexContents();
                 pendingReload.resolve();
-                return;
-            }).catch();
+            }).catch(() => {
+                pendingReload.resolve();
+            });
         }
     }
 

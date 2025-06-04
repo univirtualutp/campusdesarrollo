@@ -16,13 +16,18 @@
 
 namespace mod_quiz;
 
+use core_question\local\bank\condition;
 use core_question\local\bank\question_version_status;
+use core_question_generator;
+use mod_quiz\output\view_page;
+use mod_quiz_generator;
 use question_engine;
 
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
+
 
 /**
  * Tests for the quiz_attempt class.
@@ -31,8 +36,9 @@ require_once($CFG->dirroot . '/mod/quiz/locallib.php');
  * @category  test
  * @copyright 2014 Tim Hunt
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers \mod_quiz\quiz_attempt
  */
-class attempt_test extends \advanced_testcase {
+final class attempt_test extends \advanced_testcase {
 
     /**
      * Create quiz and attempt data with layout.
@@ -378,6 +384,49 @@ class attempt_test extends \advanced_testcase {
     }
 
     /**
+     * Test quiz_prepare_and_start_new_attempt function
+     */
+    public function test_quiz_prepare_and_start_new_attempt_random_draft() {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        // Create course.
+        $course = $this->getDataGenerator()->create_course();
+        // Create quiz.
+        /** @var mod_quiz_generator $quizgenerator */
+        $quizgenerator = $this->getDataGenerator()->get_plugin_generator('mod_quiz');
+        $quiz = $quizgenerator->create_instance(['course' => $course->id]);
+
+        // Create question with 2 versions. V1 ready. V2 draft.
+        /** @var core_question_generator $questiongenerator */
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $category = $questiongenerator->create_question_category();
+        $question = $questiongenerator->create_question('shortanswer', null,
+                ['questiontext' => 'V1', 'category' => $category->id]);
+        $questiongenerator->update_question($question, null,
+                ['questiontext' => 'V2', 'status' => question_version_status::QUESTION_STATUS_DRAFT]);
+
+        // Add a random question form that category.
+        $filtercondition = [
+            'filter' => [
+                'category' => [
+                    'jointype' => condition::JOINTYPE_DEFAULT,
+                    'values' => [$category->id],
+                    'filteroptions' => ['includesubcategories' => false],
+                ],
+            ],
+        ];
+        $quizobj = quiz_settings::create($quiz->id);
+        $quizobj->get_structure()->add_random_questions(1, 1, $filtercondition);
+        $quizobj->get_grade_calculator()->recompute_quiz_sumgrades();
+
+        // Create an attempt.
+        $quizobj = quiz_settings::create($quiz->id);
+        $attempt = quiz_prepare_and_start_new_attempt($quizobj, 1, null);
+        $this->assertEquals(1, $attempt->preview);
+    }
+
+    /**
      * Test check_page_access function
      * @covers \quiz_attempt::check_page_access
      */
@@ -494,9 +543,10 @@ class attempt_test extends \advanced_testcase {
         $attempt = quiz_create_attempt($quizobj, 1, false, time(), false, $student1->id);
         $attempt = quiz_start_new_attempt($quizobj, $quba, $attempt, 1, time());
         $attempt = quiz_attempt_save_started($quizobj, $quba, $attempt);
-
         $DB->set_field('question_versions', 'status', question_version_status::QUESTION_STATUS_DRAFT,
                 ['questionid' => $question->id]);
+        // We need to reset the cache since the question has been edited by changing its status to draft.
+        \question_bank::notify_question_edited($question->id);
         $quizobj = quiz_settings::create($quiz->id);
         $quba = question_engine::make_questions_usage_by_activity('mod_quiz', $quizobj->get_context());
         $quba->set_preferred_behaviour($quizobj->get_quiz()->preferredbehaviour);
@@ -504,5 +554,57 @@ class attempt_test extends \advanced_testcase {
 
         $this->expectExceptionObject(new \moodle_exception('questiondraftonly', 'mod_quiz', '', $question->name));
         quiz_start_attempt_built_on_last($quba, $newattempt, $attempt);
+    }
+
+    /**
+     * Starting a new attempt and check the summary previous attempts table.
+     *
+     * @covers ::view_table()
+     */
+    public function test_view_table(): void {
+        global $PAGE;
+        $this->resetAfterTest();
+
+        $timenow = time();
+        // Create attempt object.
+        $attempt = $this->create_quiz_and_attempt_with_layout('1,1,0');
+        // Finish attempt.
+        $attempt->process_finish($timenow, false);
+
+        $quiz = $attempt->get_quiz();
+        $context = $attempt->get_context();
+
+        // Prepare view object.
+        $viewobj = new view_page();
+        $viewobj->attemptcolumn = true;
+        $viewobj->markcolumn = true;
+        $viewobj->gradecolumn = true;
+        $viewobj->canreviewmine = true;
+        $viewobj->mygrade = 0.00;
+        $viewobj->feedbackcolumn = false;
+        $viewobj->attempts = $attempt;
+        $viewobj->attemptobjs[] = new quiz_attempt($attempt->get_attempt(),
+            $quiz, $attempt->get_cm(), $attempt->get_course(), false);
+        $viewobj->accessmanager = new access_manager($attempt->get_quizobj(), $timenow,
+            has_capability('mod/quiz:ignoretimelimits', $context, null, false));
+
+        // Render summary previous attempts table.
+        $renderer = $PAGE->get_renderer('mod_quiz');
+        $table = $renderer->view_table($quiz, $context, $viewobj);
+        $captionpattern = '/<caption\b[^>]*>' . get_string('summaryofattempts', 'quiz') . '<\/caption>/';
+
+        // Check caption existed.
+        $this->assertMatchesRegularExpression($captionpattern, $table);
+        // Check column attempt.
+        $this->assertMatchesRegularExpression('/<td\b[^>]*>' . $attempt->get_attempt_number() . '<\/td>/', $table);
+        // Check column state.
+        $this->assertMatchesRegularExpression('/<td\b[^>]*>' . ucfirst($attempt->get_state()) . '.+?<\/td>/', $table);
+        // Check column marks.
+        $this->assertMatchesRegularExpression('/<td\b[^>]* c2.+?' .
+            quiz_format_grade($quiz, $attempt->get_sum_marks()) .'<\/td>/', $table);
+        // Check column grades.
+        $this->assertMatchesRegularExpression('/<td\b[^>]* c2.+?0\.00<\/td>/', $table);
+        // Check column review.
+        $this->assertMatchesRegularExpression('/<td\b[^>]*>.+?Review<\/a><\/td>/', $table);
     }
 }

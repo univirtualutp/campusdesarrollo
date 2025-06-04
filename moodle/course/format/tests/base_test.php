@@ -14,16 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Course related unit tests
  *
  * @package    core_course
  * @copyright  2014 Marina Glancy
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @coversDefaultClass \core_courseformat\base
  */
-class base_test extends advanced_testcase {
+final class base_test extends advanced_testcase {
 
     /**
      * Setup to ensure that fixtures are loaded.
@@ -284,7 +283,7 @@ class base_test extends advanced_testcase {
      *
      * @return array the testing scenarios
      */
-    public function get_output_classname_provider(): array {
+    public static function get_output_classname_provider(): array {
         return [
             'overridden class' => [
                 'find' => 'state\\course',
@@ -369,6 +368,99 @@ class base_test extends advanced_testcase {
     }
 
     /**
+     * Test add_section_preference_ids() method.
+     *
+     * @covers \core_courseformat\base::persist_to_user_preference
+     */
+    public function test_add_section_preference_ids(): void {
+        $this->resetAfterTest();
+        // Create initial data.
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $user = $generator->create_and_enrol($course);
+        // Get the course format.
+        $format = course_get_format($course);
+        // Login as the user.
+        $this->setUser($user);
+
+        // Add section preference ids.
+        $format->add_section_preference_ids('pref1', [1, 2]);
+        $format->add_section_preference_ids('pref1', [3]);
+        $format->add_section_preference_ids('pref2', [1]);
+
+        // Get section preferences.
+        $sectionpreferences = $format->get_sections_preferences_by_preference();
+        $this->assertCount(3, $sectionpreferences['pref1']);
+        $this->assertContains(1, $sectionpreferences['pref1']);
+        $this->assertContains(2, $sectionpreferences['pref1']);
+        $this->assertContains(3, $sectionpreferences['pref1']);
+        $this->assertCount(1, $sectionpreferences['pref2']);
+        $this->assertContains(1, $sectionpreferences['pref1']);
+    }
+
+    /**
+     * Test remove_section_preference_ids() method.
+     *
+     * @covers \core_courseformat\base::persist_to_user_preference
+     */
+    public function test_remove_section_preference_ids(): void {
+        $this->resetAfterTest();
+        // Create initial data.
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $user = $generator->create_and_enrol($course);
+        // Get the course format.
+        $format = course_get_format($course);
+        // Login as the user.
+        $this->setUser($user);
+        // Set initial preferences.
+        $format->set_sections_preference('pref1', [1, 2, 3]);
+        $format->set_sections_preference('pref2', [1]);
+
+        // Remove section with id = 3 out of the pref1.
+        $format->remove_section_preference_ids('pref1', [3]);
+        // Get section preferences.
+        $sectionpreferences = $format->get_sections_preferences_by_preference();
+        $this->assertCount(2, $sectionpreferences['pref1']);
+        $this->assertCount(1, $sectionpreferences['pref2']);
+
+        // Remove section with id = 2 out of the pref1.
+        $format->remove_section_preference_ids('pref1', [2]);
+        // Remove section with id = 1 out of the pref2.
+        $format->remove_section_preference_ids('pref2', [1]);
+        // Get section preferences.
+        $sectionpreferences = $format->get_sections_preferences_by_preference();
+        $this->assertCount(1, $sectionpreferences['pref1']);
+        $this->assertEmpty($sectionpreferences['pref2']);
+    }
+
+    /**
+     * Test that retrieving last section number for a course
+     *
+     * @covers ::get_last_section_number
+     */
+    public function test_get_last_section_number(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Course with two additional sections.
+        $courseone = $this->getDataGenerator()->create_course(['numsections' => 2]);
+        $this->assertEquals(2, course_get_format($courseone)->get_last_section_number());
+
+        // Course without additional sections, section zero is the "default" section that always exists.
+        $coursetwo = $this->getDataGenerator()->create_course(['numsections' => 0]);
+        $this->assertEquals(0, course_get_format($coursetwo)->get_last_section_number());
+
+        // Course without additional sections, manually remove section zero, as "course_delete_section" prevents that. This
+        // simulates course data integrity issues that previously triggered errors.
+        $coursethree = $this->getDataGenerator()->create_course(['numsections' => 0]);
+        $DB->delete_records('course_sections', ['course' => $coursethree->id, 'section' => 0]);
+
+        $this->assertEquals(-1, course_get_format($coursethree)->get_last_section_number());
+    }
+
+    /**
      * Test for the default delete format data behaviour.
      *
      * @covers ::delete_format_data
@@ -426,7 +518,7 @@ class base_test extends advanced_testcase {
      *
      * @return array the testing scenarios
      */
-    public function delete_format_data_provider(): array {
+    public static function delete_format_data_provider(): array {
         return [
             'direct call' => [
                 'usehook' => false
@@ -508,7 +600,7 @@ class base_test extends advanced_testcase {
      *
      * @return array the testing scenarios
      */
-    public function get_format_string_provider(): array {
+    public static function get_format_string_provider(): array {
         return [
             'Existing in format lang' => [
                 'key' => 'sectionsdelete',
@@ -586,7 +678,7 @@ class base_test extends advanced_testcase {
      *
      * @return array the testing scenarios
      */
-    public function move_section_after_provider(): array {
+    public static function move_section_after_provider(): array {
         return [
             'Move top' => [
                 'movesection' => 'section3',
@@ -659,6 +751,75 @@ class base_test extends advanced_testcase {
                     'section5',
                     'section3',
                 ],
+            ],
+        ];
+    }
+
+    /**
+     * Test for the get_non_ajax_cm_action_url method.
+     *
+     * @covers ::get_non_ajax_cm_action_url
+     * @dataProvider get_non_ajax_cm_action_url_provider
+     * @param string $action the ajax action name
+     * @param string $expectedparam the expected param to check
+     * @param string $exception if an exception is expected
+     */
+    public function test_get_non_ajax_cm_action_url(string $action, string $expectedparam, bool $exception) {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $assign0 = $generator->create_module('assign', array('course' => $course, 'section' => 0));
+
+        $format = course_get_format($course);
+        $modinfo = $format->get_modinfo();
+        $cminfo = $modinfo->get_cm($assign0->cmid);
+
+        if ($exception) {
+            $this->expectException(\coding_exception::class);
+        }
+        $result = $format->get_non_ajax_cm_action_url($action, $cminfo);
+        $this->assertEquals($assign0->cmid, $result->param($expectedparam));
+    }
+
+    /**
+     * Data provider for test_get_non_ajax_cm_action_url.
+     *
+     * @return array the testing scenarios
+     */
+    public static function get_non_ajax_cm_action_url_provider(): array {
+        return [
+            'duplicate' => [
+                'action' => 'cmDuplicate',
+                'expectedparam' => 'duplicate',
+                'exception' => false,
+            ],
+            'hide' => [
+                'action' => 'cmHide',
+                'expectedparam' => 'hide',
+                'exception' => false,
+            ],
+            'show' => [
+                'action' => 'cmShow',
+                'expectedparam' => 'show',
+                'exception' => false,
+            ],
+            'stealth' => [
+                'action' => 'cmStealth',
+                'expectedparam' => 'stealth',
+                'exception' => false,
+            ],
+            'delete' => [
+                'action' => 'cmDelete',
+                'expectedparam' => 'delete',
+                'exception' => false,
+            ],
+            'non-existent' => [
+                'action' => 'nonExistent',
+                'expectedparam' => '',
+                'exception' => true,
             ],
         ];
     }

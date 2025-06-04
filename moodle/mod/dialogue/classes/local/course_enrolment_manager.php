@@ -38,7 +38,7 @@ class course_enrolment_manager extends \course_enrolment_manager {
      *      boolean moreusers True if there are still more users, otherwise is False.
      */
     public function search_users_with_groups(string $search = '', bool $searchanywhere = false, int $page = 0, int $perpage = 25,
-            array $groups) {
+            array $groups = []) {
         global $DB;
 
         [$ufields, $joins, $params, $wherecondition] = $this->get_basic_search_conditions($search, $searchanywhere);
@@ -46,18 +46,75 @@ class course_enrolment_manager extends \course_enrolment_manager {
         $fields      = 'SELECT ' . $ufields;
         $countfields = 'SELECT COUNT(u.id)';
         list($insql, $inparams) = $DB->get_in_or_equal(array_keys($groups), SQL_PARAMS_NAMED);
-
+        $capability = 'mod/dialogue:receive';
+        $context = $this->context;
+        [$enrolledsql, $enrolledparams] = get_enrolled_sql($context, $capability, 0, true);
         $sql = " FROM {user} u
                       $joins
                  JOIN {user_enrolments} ue ON ue.userid = u.id
                  JOIN {enrol} e ON ue.enrolid = e.id
                  JOIN ({groups_members} gm JOIN {groups} g ON (g.id = gm.groupid))
                       ON (u.id = gm.userid AND g.courseid = e.courseid)
+                JOIN ($enrolledsql) je ON je.id = u.id
                 WHERE $wherecondition
+                  AND u.suspended = 0
                   AND e.courseid = :courseid
                   AND g.id $insql";
         $params['courseid'] = $this->course->id;
-        $params = array_merge($params, $inparams);
+        $params = array_merge($params, $inparams, $enrolledparams);
         return $this->execute_search_queries($search, $fields, $countfields, $sql, $params, $page, $perpage, 0, false);
+    }
+
+    /**
+     * Searches through the enrolled users in this course based on search_users but with mod_dialogue permission.
+     *
+     * @param string $search The search term.
+     * @param bool $searchanywhere Can the search term be anywhere, or must it be at the start.
+     * @param int $page Starting at 0.
+     * @param int $perpage Number of users returned per page.
+     * @param bool $returnexactcount Return the exact total users using count_record or not.
+     * @param ?int $contextid Context ID we are in - we might use search on activity level and its group mode can be different from course group mode.
+     * @return array An array of users
+     */
+    public function search_users(string $search = '', bool $searchanywhere = false, int $page = 0, int $perpage = 25,
+            bool $returnexactcount = false, ?int $contextid = null) {
+        global $USER;
+
+        [$ufields, $joins, $params, $wherecondition] = $this->get_basic_search_conditions($search, $searchanywhere);
+
+        if (isset($contextid)) {
+            // If contextid is set, we need to determine the group mode that should be used (module or course).
+            [$context, $course, $cm] = get_context_info_array($contextid);
+            // If cm instance is returned, then use the group mode from the module, otherwise get the course group mode.
+            $groupmode = $cm ? groups_get_activity_groupmode($cm, $course) : groups_get_course_groupmode($this->course);
+        } else {
+            // Otherwise, default to the group mode of the course.
+            $context = $this->context;
+            $groupmode = groups_get_course_groupmode($this->course);
+        }
+
+        if ($groupmode == SEPARATEGROUPS && !has_capability('moodle/site:accessallgroups', $context)) {
+            $groups = groups_get_all_groups($this->course->id, $USER->id, 0, 'g.id');
+            $groupids = array_column($groups, 'id');
+            if (!$groupids) {
+                return ['totalusers' => 0, 'users' => [], 'moreusers' => false];
+            }
+        } else {
+            $groupids = [];
+        }
+
+        [$enrolledsql, $enrolledparams] = get_enrolled_sql($context, 'mod/dialogue:receive', $groupids);
+
+        $fields      = 'SELECT ' . $ufields;
+        $countfields = 'SELECT COUNT(u.id)';
+        $sql = " FROM {user} u
+                      $joins
+                 JOIN ($enrolledsql) je ON je.id = u.id
+                WHERE $wherecondition
+                AND u.suspended = 0";
+
+        $params = array_merge($params, $enrolledparams);
+
+        return $this->execute_search_queries($search, $fields, $countfields, $sql, $params, $page, $perpage, 0, $returnexactcount);
     }
 }

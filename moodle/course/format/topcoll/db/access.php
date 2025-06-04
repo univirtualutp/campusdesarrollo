@@ -23,59 +23,57 @@
  * code change. Full installation instructions, code adaptions and credits are included in the 'Readme.txt' file.
  *
  * @package    format_topcoll
- * @version    See the value of '$plugin->version' in version.php.
  * @copyright  &copy; 2012-onwards G J Barnard in respect to modifications of standard topics format.
- * @author     G J Barnard - gjbarnard at gmail dot com and {@link http://moodle.org/user/profile.php?id=442195}
- * @link       http://docs.moodle.org/en/Collapsed_Topics_course_format
- * @license    http://www.gnu.org/copyleft/gpl.html GNU Public License
- *
+ * @author     G J Barnard - {@link https://moodle.org/user/profile.php?id=442195}
+ * @link       https://docs.moodle.org/en/Collapsed_Topics_course_format
+ * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$capabilities = array(
-    'format/topcoll:changelayout' => array(
+$capabilities = [
+    'format/topcoll:changelayout' => [
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => array(
+        'archetypes' => [
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW
-        )
-    ),
+            'manager' => CAP_ALLOW,
+        ],
+    ],
 
-    'format/topcoll:changecolour' => array(
+    'format/topcoll:changecolour' => [
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => array(
+        'archetypes' => [
             'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW
-        )
-    ),
+            'manager' => CAP_ALLOW,
+        ],
+    ],
 
-    'format/topcoll:changetogglealignment' => array(
+    'format/topcoll:changetogglealignment' => [
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => array(
+        'archetypes' => [
         'editingteacher' => CAP_ALLOW,
-        'manager' => CAP_ALLOW
-        )
-    ),
+        'manager' => CAP_ALLOW,
+        ],
+    ],
 
-    'format/topcoll:changetoggleiconset' => array(
+    'format/topcoll:changetoggleiconset' => [
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => array(
+        'archetypes' => [
         'editingteacher' => CAP_ALLOW,
-        'manager' => CAP_ALLOW
-        )
-    ),
+        'manager' => CAP_ALLOW,
+        ],
+    ],
 
-    'format/topcoll:changeactivitymeta' => array(
+    'format/topcoll:changeactivitymeta' => [
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => array(
+        'archetypes' => [
         'editingteacher' => CAP_ALLOW,
-        'manager' => CAP_ALLOW
-        )
-    )
-);
+        'manager' => CAP_ALLOW,
+        ],
+    ],
+];

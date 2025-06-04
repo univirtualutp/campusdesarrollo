@@ -22,7 +22,7 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
-require_once($CFG->dirroot.'/course/format/renderer.php');
+// require_once($CFG->dirroot.'/course/format/renderer.php');
 require_once($CFG->dirroot.'/course/format/remuiformat/classes/mod_stats.php');
 
 use core_courseformat\output\section_renderer;
@@ -80,7 +80,8 @@ class format_remuiformat_renderer extends section_renderer {
      * @return object courserenderer
      */
     public function get_base_renderer() {
-        return $this->courserenderer;
+        global $PAGE;
+        return $PAGE->get_renderer('core_course');
     }
 
     /**
@@ -146,19 +147,24 @@ class format_remuiformat_renderer extends section_renderer {
 
         $links = array('previous' => '', 'next' => '');
         $back = $sectionno - 1;
+
+        while (!isset($sections[$back]) && $back > 0) {
+            $back--;
+        }
+
         while ($back > 0 and empty($links['previous'])) {
             if ($canviewhidden || $sections[$back]->uservisible) {
-                $params = array('class' => 'btn btn-inverse btn-sm ');
+                $params = array('class' => 'btn btn-primary btn-inverse btn-sm ');
                 $previouslink = html_writer::tag('span', "&#8249;", array('class' => 'larrow mr-1 font-size-16'));
                 if ($CFG->theme == 'remui') {
-                    $params = array('class' => 'btn btn-inverse btn-sm d-flex align-items-center');
+                    $params = array('class' => 'btn btn-primary btn-inverse btn-sm d-flex align-items-center');
                     $previouslink = html_writer::tag('span', "", array('class' => 'larrow mr-1 font-size-16 edw-icon edw-icon-Left-Arrow'));
                 }
                 $prevsectionname = get_section_name($course, $sections[$back]);
                 if (!$sections[$back]->visible) {
-                    $params = array('class' => 'dimmed_text btn btn-inverse btn-sm');
+                    $params = array('class' => 'dimmed_text btn btn-primary btn-inverse btn-sm');
                     if ($CFG->theme == 'remui') {
-                        $params = array('class' => 'dimmed_text btn btn-inverse btn-sm d-flex align-items-center');
+                        $params = array('class' => 'dimmed_text btn btn-primary btn-inverse btn-sm d-flex align-items-center');
                     }
                 }
                 $previouslink .=
@@ -170,18 +176,21 @@ class format_remuiformat_renderer extends section_renderer {
 
         $forward = $sectionno + 1;
         $numsections = course_get_format($course)->get_last_section_number();
+        while (!isset($sections[$forward]) && $forward <= $numsections) {
+            $forward++;
+        }
         while ($forward <= $numsections and empty($links['next'])) {
             if ($canviewhidden || $sections[$forward]->uservisible) {
-                $params = array('class' => 'btn btn-inverse btn-sm');
-                $nextlinkarrowcontent = html_writer::tag('span', "&#8250;", array('class' => 'rarrow ml-1 font-size-16'));
+                $params = array('class' => 'btn btn-primary btn-inverse btn-sm');
+                $nextlinkarrowcontent = html_writer::tag('span', "&#8250;", array('class' => 'rarrow erf-ml-1 font-size-16'));
                 if ($CFG->theme == 'remui') {
-                    $params = array('class' => 'btn btn-inverse btn-sm d-flex align-items-center');
-                    $nextlinkarrowcontent = html_writer::tag('span', "", array('class' => 'rarrow ml-1 font-size-16 edw-icon edw-icon-Right-Arrow'));
+                    $params = array('class' => 'btn btn-primary btn-inverse btn-sm d-flex align-items-center');
+                    $nextlinkarrowcontent = html_writer::tag('span', "", array('class' => 'rarrow erf-ml-1 font-size-16 edw-icon edw-icon-Right-Arrow'));
                 }
                 if (!$sections[$forward]->visible) {
-                    $params = array('class' => 'dimmed_text btn btn-inverse btn-sm');
+                    $params = array('class' => 'dimmed_text btn btn-primary btn-inverse btn-sm');
                     if ($CFG->theme == 'remui') {
-                        $params = array('class' => 'dimmed_text btn btn-inverse btn-sm d-flex align-items-center');
+                        $params = array('class' => 'dimmed_text btn btn-primary btn-inverse btn-sm d-flex align-items-center');
                     }
                 }
                 $nextsectionname = get_section_name($course, $sections[$forward]);
@@ -279,7 +288,7 @@ class format_remuiformat_renderer extends section_renderer {
             $o .= html_writer::tag(
                 'p', get_string('progress', 'format_remuiformat'), array('class' => 'progress-title m-0 text-muted')
             );
-            $o .= html_writer::tag('p', $a->complete.' / '.$a->total, array('class' => 'activity-count m-0 text-right'));
+            $o .= html_writer::tag('p', $a->complete.' / '.$a->total, array('class' => 'activity-count m-0 erf-text-right'));
             $o .= html_writer::end_tag('div');
             $o .= html_writer::start_tag('div', array('class' => 'pchart', 'data-percent' => $percentage));
             $o .= html_writer::tag(
@@ -555,6 +564,7 @@ class format_remuiformat_renderer extends section_renderer {
     public function render_list_all_sections_summary(
         \format_remuiformat\output\format_remuiformat_list_all_sections_summary $section) {
         $templatecontext = $section->export_for_template($this);
+        $templatecontext->islistsummarysection = true;
         if (isset($templatecontext->error)) {
             throw new \moodle_exception($templatecontext->error);
         } else {

@@ -226,6 +226,15 @@ class format_remuiformat extends core_courseformat\base {
                 $url->set_anchor('section-'.$sectionno);
             }
         }
+
+        if ((!empty($options['navigation']) || array_key_exists('sr', $options)) && $sectionno !== null) {
+            global $PAGE;
+            if (strpos($PAGE->url->get_path(), 'course/section.php')) {
+                // Display section on separate page.
+                $sectioninfo = $this->get_section($sectionno);
+                return new moodle_url('/course/section.php', ['id' => $sectioninfo->id]);
+            }
+        }
         return $url;
     }
 
@@ -598,6 +607,46 @@ class format_remuiformat extends core_courseformat\base {
         return true;
     }
 
+    public function supports_components() {
+        global $CFG;
+        // if($CFG->branch >= "405") {
+        //     return true;
+        // }
+        return true;
+    }
+
+    /**
+     * Set the current section number to display.
+     * Some formats has the hability to swith from one section to multiple sections per page.
+     *
+     * @param int|null $sectionnum null for all sections or a sectionid.
+     */
+    // public function set_section_number(int $sectionnum): void {
+    //     global $CFG;
+    //     if ((int)$CFG->branch >= 404) {
+    //         parent::set_sectionnum($sectionnum);
+    //     } else {
+    //         parent::set_section_number($sectionnum);
+    //     }
+    // }
+
+    /**
+     * Set if the current format instance will show multiple sections or an individual one.
+     *
+     * Some formats has the hability to swith from one section to multiple sections per page,
+     * output components will use this method to know if the current display is a single or
+     * multiple sections.
+     *
+     * @return int zero for all sections or the sectin number
+     */
+    // public function get_section_number(): int {
+    //     global $CFG;
+    //     if ((int)$CFG->branch >= 404) {
+    //         return (int)parent::get_sectionnum();
+    //     } else {
+    //         return parent::get_section_number();
+    //     }
+    // }
     /**
      * Returns the list of blocks to be automatically added for the newly created course
      *
@@ -637,7 +686,7 @@ class format_remuiformat extends core_courseformat\base {
      * @return null|array|stdClass any data for the Javascript post-processor (must be json-encodeable)
      */
     public function section_action($section, $action, $sr) {
-        global $PAGE;
+        global $PAGE, $CFG;
 
         if ($action == 'deleteSection') {
             return null;
@@ -652,7 +701,14 @@ class format_remuiformat extends core_courseformat\base {
         // For show/hide actions call the parent method and return the new content for .section_availability element.
         $rv = parent::section_action($section, $action, $sr);
         $renderer = $PAGE->get_renderer('format_topics');
-        $rv['section_availability'] = $renderer->section_availability($this->get_section($section));
+        $format = course_get_format($this->courseid);
+        // if($CFG->backup_release > '4.3'){
+        if($CFG->branch > '403'){
+            $rv['section_availability'] = new \core_courseformat\output\local\content\section\availability($format, $this->get_section($section));
+        }else{
+            $rv['section_availability'] = $renderer->section_availability($this->get_section($section));
+        }
+
         return $rv;
     }
 
@@ -821,22 +877,45 @@ function format_remuiformat_check_plugin_available($component) {
     /**
      * Get Enrolled Teachers Context
      */
-function get_enrolled_teachers_context_formate($courseid = null, $frontlineteacher = false) {
-    global $OUTPUT;
+function get_enrolled_teachers_context_formate($course, $frontlineteacher = false) {
+    global $OUTPUT, $CFG, $USER;
+
+    $courseid = $course->id;
+
+    $usergroups = groups_get_user_groups($courseid, $USER->id);
+
+    $groupids = 0;
+
+    if($course->groupmode == 1){
+        $groupids = $usergroups[0];
+    }
     $coursecontext = \context_course::instance($courseid);
-    $teachers = get_enrolled_users($coursecontext, 'mod/folder:managefiles', 0, '*', 'firstname');
+    $teachers = get_enrolled_users($coursecontext, 'mod/folder:managefiles', $groupids, '*', 'firstname', $limitfrom = 0, $limitnum = 0, $onlyactive = true);
+    $roles =   new stdClass();
+
+    $allroles = get_all_roles();
+    foreach($allroles as $singlerole){
+        if($singlerole->shortname == 'editingteacher'){
+            $roles = $singlerole;
+            break;
+        }
+    }
+    if(!isset($roles)){
+        $roles->id = "";
+    }
 
     $context = array();
 
     if ($teachers) {
-        $namescount = 2;
+        $namescount = 4;
         $profilecount = 0;
-
         foreach ($teachers as $key => $teacher) {
             if ($frontlineteacher && $profilecount < $namescount) {
                 $instructor = array();
+                $instructor['id'] = $teacher->id;
                 $instructor['name'] = fullname($teacher, true);
-                $instructor['avatars'][] = $OUTPUT->user_picture($teacher);
+                $instructor['avatars'] = $OUTPUT->user_picture($teacher);
+                $instructor['teacherprofileurl'] = $CFG->wwwroot.'/user/profile.php?id='.$teacher->id;
                 if ($profilecount != 0) {
                     $instructor['hasanother'] = true;
                 }
@@ -847,6 +926,7 @@ function get_enrolled_teachers_context_formate($courseid = null, $frontlineteach
         if ($profilecount > $namescount) {
             $context['teachercount'] = $profilecount - $namescount;
         }
+        $context['participantspageurl'] = $CFG->wwwroot.'/user/index.php?id='.$courseid.'&roleid='.$roles->id;
         $context['hasteachers'] = true;
     }
     return $context;
@@ -900,7 +980,7 @@ function get_extra_header_context(&$export, $course, $percentage, $imgurl) {
         $rnrshortdesign = $rnr->get_short_design_enrolmentpage($course->id);
     }
     $coursesettings = course_get_format($course)->get_settings();
-    $export->generalsection['teachers'] = get_enrolled_teachers_context_formate($course->id, true);
+    $export->generalsection['teachers'] = get_enrolled_teachers_context_formate($course, true);
     $export->generalsection['coursefullname'] = format_text($coursedetails->fullname);
     $export->generalsection['coursecategoryname'] = format_text($categorydetails->name);
     $export->generalsection['rnrdesign'] = $rnrshortdesign;
@@ -924,5 +1004,21 @@ function get_extra_header_context(&$export, $course, $percentage, $imgurl) {
         $export->generalsection['overlayopacity'] = 1;
     }
     $export->generalsection['coursecompletionstatus'] =  $course->enablecompletion;
+    $export->generalsection['subsectionjs'] = false;
+    $export->generalsection['sectionreturn'] = null;
+    if($CFG->branch >='405'){
+        $export->generalsection['subsectionjs'] = true;
+    }
     return $export->generalsection;
+}
+
+function format_remuiformat_user_preferences(): array {
+    return [
+        'showinfomodalineditmode' => [
+            'type' => PARAM_BOOL,
+            'null' => NULL_NOT_ALLOWED,
+            'default' => false,
+            'permissioncallback' => [core_user::class, 'is_current_user'],
+        ]
+    ];
 }

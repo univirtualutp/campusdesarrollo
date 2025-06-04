@@ -28,7 +28,7 @@ use mod_quiz\quiz_attempt;
  * @coversDefaultClass \qbank_usage\tables\question_usage_table
  * @covers \qbank_usage_output_fragment_question_usage
  */
-class question_usage_test extends \advanced_testcase {
+final class question_usage_test extends \advanced_testcase {
 
     /**
      * Test question usage data.
@@ -63,7 +63,7 @@ class question_usage_test extends \advanced_testcase {
 
             $question = $questiongenerator->create_question('shortanswer', null, ['category' => $cat->id]);
             quiz_add_quiz_question($question->id, $quiz, $page);
-            $questions [] = $question;
+            $questions[] = $question;
         }
 
         $timenow = time();

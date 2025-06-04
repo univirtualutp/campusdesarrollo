@@ -576,7 +576,7 @@ class HTML_QuickForm extends HTML_Common {
         $includeFile = $GLOBALS['HTML_QUICKFORM_ELEMENT_TYPES'][$type][0];
         include_once($includeFile);
         $elementObject = new $className(); //Moodle: PHP 5.3 compatibility
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 6; $i++) {
             if (!isset($args[$i])) {
                 $args[$i] = null;
             }
@@ -724,12 +724,13 @@ class HTML_QuickForm extends HTML_Common {
      * @param    string     $separator      (optional)string to separate elements
      * @param    bool       $appendName     (optional)specify whether the group name should be
      *                                      used in the form element name ex: group[element]
+     * @param     mixed     $attributes     Either a typical HTML attribute string or an associative array
      * @return   object     reference to added group of elements
      * @since    2.8
      * @access   public
      * @throws   PEAR_Error
      */
-    function &addGroup($elements, $name=null, $groupLabel='', $separator=null, $appendName = true)
+    function &addGroup($elements, $name = null, $groupLabel = '', $separator = null, $appendName = true, $attributes = null)
     {
         static $anonGroups = 1;
 
@@ -737,7 +738,7 @@ class HTML_QuickForm extends HTML_Common {
             $name       = 'qf_group_' . $anonGroups++;
             $appendName = false;
         }
-        $group =& $this->addElement('group', $name, $groupLabel, $elements, $separator, $appendName);
+        $group =& $this->addElement('group', $name, $groupLabel, $elements, $separator, $appendName, $attributes);
         return $group;
     } // end func addGroup
 
@@ -1570,15 +1571,16 @@ class HTML_QuickForm extends HTML_Common {
             $elementList = array_flip($elementList);
         }
 
+        $frozen = [];
         foreach (array_keys($this->_elements) as $key) {
             $name = $this->_elements[$key]->getName();
             if ($this->_freezeAll || isset($elementList[$name])) {
                 $this->_elements[$key]->freeze();
-                unset($elementList[$name]);
+                $frozen[$name] = true;
             }
         }
 
-        if (!empty($elementList)) {
+        if (count($elementList) != count($frozen)) {
             return self::raiseError(null, QUICKFORM_NONEXIST_ELEMENT, null, E_USER_WARNING, "Nonexistant element(s): '" . implode("', '", array_keys($elementList)) . "' in HTML_QuickForm::freeze()", 'HTML_QuickForm_Error', true);
         }
         return true;

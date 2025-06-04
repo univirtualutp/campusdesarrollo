@@ -23,45 +23,42 @@
  * code change. Full installation instructions, code adaptions and credits are included in the 'Readme.txt' file.
  *
  * @package    format_topcoll
- * @category   cache
- * @version    See the value of '$plugin->version' in version.php.
  * @copyright  &copy; 2021-onwards G J Barnard.
- * @author     G J Barnard - gjbarnard at gmail dot com and {@link http://moodle.org/user/profile.php?id=442195}
- * @link       http://docs.moodle.org/en/Collapsed_Topics_course_format
- * @license    http://www.gnu.org/copyleft/gpl.html GNU Public License
- *
+ * @author     G J Barnard - {@link https://moodle.org/user/profile.php?id=442195}
+ * @link       https://docs.moodle.org/en/Collapsed_Topics_course_format
+ * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die;
 
-$definitions = array(
+$definitions = [
     // Caches student roles.
-    'activitystudentrolescache' => array(
+    'activitystudentrolescache' => [
         'mode' => cache_store::MODE_APPLICATION,
         'simplekeys' => true,
         'simpledata' => true,
         'staticacceleration' => true,
-        'staticaccelerationsize' => 2
-    ),
+        'staticaccelerationsize' => 2,
+    ],
     // Caches the number of 'students' who can access a given module on a given course.
-    'activitymodulecountcache' => array(
+    'activitymodulecountcache' => [
         'mode' => cache_store::MODE_APPLICATION,
         'simplekeys' => true,
         'simpledata' => true,
-        'staticacceleration' => true
-    ),
+        'staticacceleration' => true,
+    ],
     // Caches the ids of the 'students' on a given course.
-    'activitystudentscache' => array(
+    'activitystudentscache' => [
         'mode' => cache_store::MODE_APPLICATION,
         'simplekeys' => true,
         'simpledata' => true,
-        'staticacceleration' => true
-    ),
+        'staticacceleration' => true,
+    ],
     // Caches the ids of the new users on a given course.
-    'activityusercreatedcache' => array(
+    'activityusercreatedcache' => [
         'mode' => cache_store::MODE_APPLICATION,
         'simplekeys' => true,
         'simpledata' => true,
-        'staticacceleration' => true
-    )
-);
+        'staticacceleration' => true,
+    ],
+];

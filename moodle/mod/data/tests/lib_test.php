@@ -38,7 +38,7 @@ require_once($CFG->dirroot . '/mod/data/lib.php');
  * @copyright  2013 Adrian Greeve
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class lib_test extends \advanced_testcase {
+final class lib_test extends \advanced_testcase {
 
     /**
      * @var moodle_database
@@ -746,7 +746,7 @@ class lib_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function data_get_config_provider() {
+    public static function data_get_config_provider(): array {
         $initialdata = (object) [
             'template_foo' => true,
             'template_bar' => false,
@@ -837,7 +837,7 @@ class lib_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function data_set_config_provider() {
+    public static function data_set_config_provider(): array {
         $basevalue = (object) ['id' => rand(1, 1000)];
         $config = [
             'template_foo'  => true,
@@ -2141,7 +2141,7 @@ class lib_test extends \advanced_testcase {
      *
      * @return array of scenarios
      */
-    public function data_append_new_field_to_templates_provider(): array {
+    public static function data_append_new_field_to_templates_provider(): array {
         return [
             'Plain template' => [
                 'hasfield' => false,
@@ -2162,6 +2162,50 @@ class lib_test extends \advanced_testcase {
                 'hasfield' => true,
                 'hasotherfields' => true,
                 'expected' => false,
+            ],
+        ];
+    }
+
+    /**
+     * Test that format that are not supported are raising an exception
+     *
+     * @param string $type
+     * @param string $expected
+     * @covers \data_get_field_new
+     * @dataProvider format_parser_provider
+     */
+    public function test_create_field(string $type, string $expected) {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+
+        $data = $this->getDataGenerator()->create_module('data', ['course' => $course->id]  );
+        if ($expected === 'exception') {
+            $this->expectException(\moodle_exception::class);
+        }
+        $field = data_get_field_new($type, $data);
+        $this->assertStringContainsString($expected, get_class($field));
+    }
+
+    /**
+     * Data provider for test_format_parser
+     *
+     * @return array[]
+     */
+    public static function format_parser_provider(): array {
+        return [
+            'text' => [
+                'type' => 'text',
+                'expected' => 'data_field_text',
+            ],
+            'picture' => [
+                'type' => 'picture',
+                'expected' => 'data_field_picture',
+            ],
+            'wrong type' => [
+                'type' => '../wrongformat123',
+                'expected' => 'exception',
             ],
         ];
     }

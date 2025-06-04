@@ -63,7 +63,7 @@ require_once($CFG->dirroot . '/course/lib.php');
  * @copyright  2012 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class courselib_test extends advanced_testcase {
+final class courselib_test extends advanced_testcase {
 
     /**
      * Load required libraries and fixtures.
@@ -636,7 +636,7 @@ class courselib_test extends advanced_testcase {
      *
      * @return array An array of arrays contain test data
      */
-    public function provider_course_delete_module() {
+    public static function provider_course_delete_module(): array {
         $data = array();
 
         $data['assign'] = array('assign', array('duedate' => time()));
@@ -801,7 +801,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Relative dates mode settings provider for course creation.
      */
-    public function create_course_relative_dates_provider() {
+    public static function create_course_relative_dates_provider(): array {
         return [
             [0, 0, 0],
             [0, 1, 0],
@@ -1329,6 +1329,53 @@ class courselib_test extends advanced_testcase {
         // Showing the modules.
         foreach ($modules as $mod) {
             set_coursemodule_visible($mod->cmid, 1);
+            $this->check_module_visibility($mod, 1, 1);
+        }
+    }
+
+    /**
+     * Test rebuildcache = false behaviour.
+     *
+     * When we pass rebuildcache = false to set_coursemodule_visible, the corusemodinfo cache will still contain
+     * the original visibility until we trigger a rebuild.
+     *
+     * @return void
+     * @covers ::set_coursemodule_visible
+     */
+    public function test_module_visibility_no_rebuild(): void {
+        $this->setAdminUser();
+        $this->resetAfterTest(true);
+
+        // Create course and modules.
+        $course = $this->getDataGenerator()->create_course(['numsections' => 5]);
+        $forum = $this->getDataGenerator()->create_module('forum', ['course' => $course->id]);
+        $assign = $this->getDataGenerator()->create_module('assign', ['duedate' => time(), 'course' => $course->id]);
+        $modules = compact('forum', 'assign');
+
+        // Hiding the modules.
+        foreach ($modules as $mod) {
+            set_coursemodule_visible($mod->cmid, 0, 1, false);
+            // The modinfo cache still has the original visibility until we manually trigger a rebuild.
+            $cm = get_fast_modinfo($mod->course)->get_cm($mod->cmid);
+            $this->assertEquals(1, $cm->visible);
+        }
+
+        rebuild_course_cache($course->id);
+
+        foreach ($modules as $mod) {
+            $this->check_module_visibility($mod, 0, 0);
+        }
+
+        // Showing the modules.
+        foreach ($modules as $mod) {
+            set_coursemodule_visible($mod->cmid, 1, 1, false);
+            $cm = get_fast_modinfo($mod->course)->get_cm($mod->cmid);
+            $this->assertEquals(0, $cm->visible);
+        }
+
+        rebuild_course_cache($course->id);
+
+        foreach ($modules as $mod) {
             $this->check_module_visibility($mod, 1, 1);
         }
     }
@@ -3000,6 +3047,81 @@ class courselib_test extends advanced_testcase {
     }
 
     /**
+     * Test that permissions are duplicated correctly after duplicate_module().
+     * @covers ::duplicate_module
+     * @return void
+     */
+    public function test_duplicate_module_permissions(): void {
+        global $DB;
+        $this->setAdminUser();
+        $this->resetAfterTest();
+
+        // Create course and course module.
+        $course = self::getDataGenerator()->create_course();
+        $res = self::getDataGenerator()->create_module('assign', ['course' => $course]);
+        $cm = get_coursemodule_from_id('assign', $res->cmid, 0, false, MUST_EXIST);
+        $cmcontext = \context_module::instance($cm->id);
+
+        // Enrol student user.
+        $user = self::getDataGenerator()->create_user();
+        $roleid = $DB->get_field('role', 'id', ['shortname' => 'student'], MUST_EXIST);
+        self::getDataGenerator()->enrol_user($user->id, $course->id, $roleid);
+
+        // Add capability to original course module.
+        assign_capability('gradereport/grader:view', CAP_ALLOW, $roleid, $cmcontext->id);
+
+        // Duplicate module.
+        $newcm = duplicate_module($course, $cm);
+        $newcmcontext = \context_module::instance($newcm->id);
+
+        // Assert that user still has capability.
+        $this->assertTrue(has_capability('gradereport/grader:view', $newcmcontext, $user));
+
+        // Assert that both modules contain the same count of overrides.
+        $overrides = $DB->get_records('role_capabilities', ['contextid' => $cmcontext->id]);
+        $newoverrides = $DB->get_records('role_capabilities', ['contextid' => $newcmcontext->id]);
+        $this->assertEquals(count($overrides), count($newoverrides));
+    }
+
+    /**
+     * Test that locally assigned roles are duplicated correctly after duplicate_module().
+     * @covers ::duplicate_module
+     * @return void
+     */
+    public function test_duplicate_module_role_assignments(): void {
+        global $DB;
+        $this->setAdminUser();
+        $this->resetAfterTest();
+
+        // Create course and course module.
+        $course = self::getDataGenerator()->create_course();
+        $res = self::getDataGenerator()->create_module('assign', ['course' => $course]);
+        $cm = get_coursemodule_from_id('assign', $res->cmid, 0, false, MUST_EXIST);
+        $cmcontext = \context_module::instance($cm->id);
+
+        // Enrol student user.
+        $user = self::getDataGenerator()->create_user();
+        $roleid = $DB->get_field('role', 'id', ['shortname' => 'student'], MUST_EXIST);
+        self::getDataGenerator()->enrol_user($user->id, $course->id, $roleid);
+
+        // Assign user a new local role.
+        $newroleid = $DB->get_field('role', 'id', ['shortname' => 'editingteacher'], MUST_EXIST);
+        role_assign($newroleid, $user->id, $cmcontext->id);
+
+        // Duplicate module.
+        $newcm = duplicate_module($course, $cm);
+        $newcmcontext = \context_module::instance($newcm->id);
+
+        // Assert that user still has role assigned.
+        $this->assertTrue(user_has_role_assignment($user->id, $newroleid, $newcmcontext->id));
+
+        // Assert that both modules contain the same count of overrides.
+        $overrides = $DB->get_records('role_assignments', ['contextid' => $cmcontext->id]);
+        $newoverrides = $DB->get_records('role_assignments', ['contextid' => $newcmcontext->id]);
+        $this->assertEquals(count($overrides), count($newoverrides));
+    }
+
+    /**
      * Tests that when creating or updating a module, if the availability settings
      * are present but set to an empty tree, availability is set to null in
      * database.
@@ -3426,7 +3548,7 @@ class courselib_test extends advanced_testcase {
      *
      * @return array
      */
-    public function course_enddate_provider() {
+    public static function course_enddate_provider(): array {
         // Each provided example contains startdate, enddate and the expected exception error code if there is any.
         return [
             [
@@ -3508,7 +3630,7 @@ class courselib_test extends advanced_testcase {
      *
      * @return array
      */
-    public function course_dates_reset_provider() {
+    public static function course_dates_reset_provider(): array {
 
         // Each example contains the following:
         // - course startdate
@@ -4409,7 +4531,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test cases for the course_classify_courses_for_timeline test.
      */
-    public function get_course_classify_courses_for_timeline_test_cases() {
+    public static function get_course_classify_courses_for_timeline_test_cases(): array {
         $now = time();
         $day = 86400;
 
@@ -4520,7 +4642,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test the course_classify_courses_for_timeline function.
      *
-     * @dataProvider get_course_classify_courses_for_timeline_test_cases()
+     * @dataProvider get_course_classify_courses_for_timeline_test_cases
      * @param array $coursesdata Courses to create
      * @param array $expected Expected test results.
      */
@@ -4562,7 +4684,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test cases for the course_get_enrolled_courses_for_logged_in_user tests.
      */
-    public function get_course_get_enrolled_courses_for_logged_in_user_test_cases() {
+    public static function get_course_get_enrolled_courses_for_logged_in_user_test_cases(): array {
         $buildexpectedresult = function($limit, $offset) {
             $result = [];
             for ($i = $offset; $i < $offset + $limit; $i++) {
@@ -4650,7 +4772,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test the course_get_enrolled_courses_for_logged_in_user function.
      *
-     * @dataProvider get_course_get_enrolled_courses_for_logged_in_user_test_cases()
+     * @dataProvider get_course_get_enrolled_courses_for_logged_in_user_test_cases
      * @param int $dbquerylimit Number of records to load per DB request
      * @param int $totalcourses Number of courses to create
      * @param int $limit Maximum number of results to get.
@@ -4698,7 +4820,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test cases for the course_filter_courses_by_timeline_classification tests.
      */
-    public function get_course_filter_courses_by_timeline_classification_test_cases() {
+    public static function get_course_filter_courses_by_timeline_classification_test_cases(): array {
         $now = time();
         $day = 86400;
 
@@ -4948,7 +5070,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test the course_filter_courses_by_timeline_classification function.
      *
-     * @dataProvider get_course_filter_courses_by_timeline_classification_test_cases()
+     * @dataProvider get_course_filter_courses_by_timeline_classification_test_cases
      * @param array $coursedata Course test data to create.
      * @param string $classification Timeline classification.
      * @param int $limit Maximum number of results to return.
@@ -4997,7 +5119,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test cases for the course_filter_courses_by_timeline_classification tests.
      */
-    public function get_course_filter_courses_by_customfield_test_cases() {
+    public static function get_course_filter_courses_by_customfield_test_cases(): array {
         global $CFG;
         require_once($CFG->dirroot.'/blocks/myoverview/lib.php');
         $coursedata = [
@@ -5167,7 +5289,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test the course_filter_courses_by_customfield function.
      *
-     * @dataProvider get_course_filter_courses_by_customfield_test_cases()
+     * @dataProvider get_course_filter_courses_by_customfield_test_cases
      * @param array $coursedata Course test data to create.
      * @param string $customfield Shortname of the customfield.
      * @param string $customfieldvalue the value to filter by.
@@ -5253,7 +5375,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test cases for the course_filter_courses_by_timeline_classification w/ hidden courses tests.
      */
-    public function get_course_filter_courses_by_timeline_classification_hidden_courses_test_cases() {
+    public static function get_course_filter_courses_by_timeline_classification_hidden_courses_test_cases(): array {
         $now = time();
         $day = 86400;
 
@@ -5412,7 +5534,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test the course_filter_courses_by_timeline_classification function hidden courses.
      *
-     * @dataProvider get_course_filter_courses_by_timeline_classification_hidden_courses_test_cases()
+     * @dataProvider get_course_filter_courses_by_timeline_classification_hidden_courses_test_cases
      * @param array $coursedata Course test data to create.
      * @param string $classification Timeline classification.
      * @param int $limit Maximum number of results to return.
@@ -5622,7 +5744,7 @@ class courselib_test extends advanced_testcase {
      *
      * @return array
      */
-    function course_get_recent_courses_sort_validation_provider() {
+    public static function course_get_recent_courses_sort_validation_provider(): array {
         return [
             'Invalid sort format (SQL injection attempt)' =>
                 [
@@ -5696,7 +5818,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test cases for the course_get_course_dates_for_user_ids tests.
      */
-    public function get_course_get_course_dates_for_user_ids_test_cases() {
+    public static function get_course_get_course_dates_for_user_ids_test_cases(): array {
         $now = time();
         $pastcoursestart = $now - 100;
         $futurecoursestart = $now + 100;
@@ -6910,7 +7032,7 @@ class courselib_test extends advanced_testcase {
     /**
      * Test the course_get_course_dates_for_user_ids function.
      *
-     * @dataProvider get_course_get_course_dates_for_user_ids_test_cases()
+     * @dataProvider get_course_get_course_dates_for_user_ids_test_cases
      * @param bool $relativedatemode Set the course to relative dates mode
      * @param int $coursestart Course start date
      * @param int $usercount Number of users to create
@@ -7003,7 +7125,7 @@ class courselib_test extends advanced_testcase {
      *
      * @return array An array of arrays contain test data
      */
-    public function provider_course_modules_pending_deletion() {
+    public static function provider_course_modules_pending_deletion(): array {
         return [
             'Non-gradable activity, check all'              => [['forum'], 0, false, true],
             'Gradable activity, check all'                  => [['assign'], 0, false, true],
@@ -7270,5 +7392,128 @@ class courselib_test extends advanced_testcase {
 
         // The download course content value has changed, it should return true in this case.
         $this->assertTrue(set_downloadcontent($page->cmid, DOWNLOAD_COURSE_CONTENT_ENABLED));
+    }
+
+    /**
+     * Test for course_get_courseimage.
+     *
+     * @covers ::course_get_courseimage
+     */
+    public function test_course_get_courseimage(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+
+        $this->assertNull(course_get_courseimage($course));
+
+        $fs = get_file_storage();
+        $file = $fs->create_file_from_pathname((object) [
+            'contextid' => \core\context\course::instance($course->id)->id,
+            'component' => 'course',
+            'filearea' => 'overviewfiles',
+            'itemid' => 0,
+            'filepath' => '/',
+            'filename' => 'logo.png',
+        ], "{$CFG->dirroot}/lib/tests/fixtures/gd-logo.png");
+
+        $image = course_get_courseimage($course);
+        $this->assertInstanceOf(\stored_file::class, $image);
+        $this->assertEquals(
+            $file->get_id(),
+            $image->get_id(),
+        );
+    }
+
+    /**
+     * Test the course_get_communication_instance_data() function.
+     *
+     * @covers ::course_get_communication_instance_data
+     */
+    public function test_course_get_communication_instance_data(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+
+        // Set admin user as a valid enrolment will be checked in the callback function.
+        $this->setAdminUser();
+
+        // Use the callback function and return the data.
+        list($instance, $context, $heading, $returnurl) = component_callback(
+            'core_course',
+            'get_communication_instance_data',
+            [$course->id]
+        );
+
+        // Check the url is as expected.
+        $expectedreturnurl = new moodle_url('/course/view.php', ['id' => $course->id]);
+        $this->assertEquals($expectedreturnurl, $returnurl);
+
+        // Check the context is as expected.
+        $expectedcontext = context_course::instance($course->id);
+        $this->assertEquals($expectedcontext, $context);
+
+        // Check the instance id is as expected.
+        $this->assertEquals($course->id, $instance->id);
+
+        // Check the heading is as expected.
+        $this->assertEquals($course->fullname, $heading);
+    }
+
+    /**
+     * Test the course_update_communication_instance_data() function.
+     *
+     * @covers ::course_update_communication_instance_data
+     */
+    public function test_course_update_communication_instance_data(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+
+        // Set some data to update with.
+        $data = new stdClass();
+        $data->instanceid = $course->id;
+        $data->fullname = 'newname';
+
+        // These should not be the same yet.
+        $this->assertNotEquals($course->fullname, $data->fullname);
+
+        // Use the callback function to update the course with the data.
+        component_callback(
+            'core_course',
+            'update_communication_instance_data',
+            [$data]
+        );
+
+        // Get the course and check it was updated.
+        $course = get_course($course->id);
+        $this->assertEquals($course->fullname, $data->fullname);
+    }
+
+    /**
+     * Tests get_sorted_course_formats returns plugins in cases where plugins are
+     * installed previously but no longer exist, or not installed yet.
+     *
+     * @covers ::get_sorted_course_formats()
+     */
+    public function test_get_sorted_course_formats_installed_or_not(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // If there is an extra format installed that no longer exists, include in list (at end).
+        $DB->insert_record('config_plugins', [
+            'plugin' => 'format_frogs',
+            'name' => 'version',
+            'value' => '20240916',
+        ]);
+        \core_plugin_manager::reset_caches();
+        $formats = get_sorted_course_formats();
+        $this->assertContains('frogs', $formats);
+
+        // If one of the formats is not installed yet, we still return it.
+        $DB->delete_records('config_plugins', ['plugin' => 'format_weeks']);
+        \core_plugin_manager::reset_caches();
+        $formats = get_sorted_course_formats();
+        $this->assertContains('weeks', $formats);
     }
 }

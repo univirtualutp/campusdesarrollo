@@ -60,13 +60,13 @@ defined('MOODLE_INTERNAL') || die();
  *     // Explanation of the update step, linking to issue in the Tracker if necessary
  *     upgrade_set_timeout(XX); // Optional for big tasks
  *     // Code to execute goes here, usually the XMLDB Editor will
- *     // help you here. See {@link http://docs.moodle.org/dev/XMLDB_editor}.
+ *     // help you here. See {@link https://moodledev.io/general/development/tools/xmldb}.
  *     upgrade_main_savepoint(true, XXXXXXXXXX.XX);
  * }
  *
  * All plugins within Moodle (modules, blocks, reports...) support the existence of
  * their own upgrade.php file, using the "Frankenstyle" component name as
- * defined at {@link http://docs.moodle.org/dev/Frankenstyle}, for example:
+ * defined at {@link https://moodledev.io/general/development/policies/codingstyle/frankenstyle}, for example:
  *     - {@link xmldb_page_upgrade($oldversion)}. (modules don't require the plugintype ("mod_") to be used.
  *     - {@link xmldb_auth_manual_upgrade($oldversion)}.
  *     - {@link xmldb_workshopform_accumulative_upgrade($oldversion)}.
@@ -78,8 +78,8 @@ defined('MOODLE_INTERNAL') || die();
  * about what can be used within it.
  *
  * For more information, take a look to the documentation available:
- *     - Data definition API: {@link http://docs.moodle.org/dev/Data_definition_API}
- *     - Upgrade API: {@link http://docs.moodle.org/dev/Upgrade_API}
+ *     - Data definition API: {@link https://moodledev.io/docs/apis/core/dml/ddl}
+ *     - Upgrade API: {@link https://moodledev.io/docs/guides/upgrade}
  *
  * @param int $oldversion
  * @return bool always true
@@ -3259,13 +3259,522 @@ privatefiles,moodle|/user/files.php';
     // Automatically generated Moodle v4.2.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2023042400.03) {
+    if ($oldversion < 2023051500.00) {
+        // Define communication table.
+        $table = new xmldb_table('communication');
 
-        // Remove any orphaned role assignment records (pointing to non-existing roles).
-        $DB->set_field('task_scheduled', 'disabled', 1, ['classname' => '\core\task\question_stats_cleanup_task']);
+        // Adding fields to table communication.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE);
+        $table->add_field('instanceid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'id');
+        $table->add_field('component', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, null, 'instanceid');
+        $table->add_field('instancetype', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, null, 'component');
+        $table->add_field('provider', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, null, 'instancerype');
+        $table->add_field('roomname', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'provider');
+        $table->add_field('avatarfilename', XMLDB_TYPE_CHAR, '100', null, null, null, null, 'roomname');
+        $table->add_field('active', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, 1, 'avatarfilename');
+
+        // Add key.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Conditionally launch create table for communication.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define communication user table.
+        $table = new xmldb_table('communication_user');
+
+        // Adding fields to table communication.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE);
+        $table->add_field('commid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'id');
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'commid');
+        $table->add_field('synced', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, 0, 'userid');
+        $table->add_field('deleted', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, 0, 'synced');
+
+        // Add keys.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('commid', XMLDB_KEY_FOREIGN, ['commid'], 'communication', ['id']);
+        $table->add_key('userid', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+
+        // Conditionally launch create table for communication.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
 
         // Main savepoint reached.
-        upgrade_main_savepoint(true, 2023042400.03);
+        upgrade_main_savepoint(true, 2023051500.00);
+    }
+
+    if ($oldversion < 2023062200.00) {
+        // Remove device specific fields for themes from config table.
+        unset_config('thememobile');
+        unset_config('themelegacy');
+        unset_config('themetablet');
+
+        upgrade_main_savepoint(true, 2023062200.00);
+    }
+
+    if ($oldversion < 2023062700.01) {
+        // Define field name to be added to external_tokens.
+        $table = new xmldb_table('external_tokens');
+        $field = new xmldb_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'lastaccess');
+        // Conditionally launch add field name.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        // Update the old external tokens.
+        $sql = 'UPDATE {external_tokens}
+                   SET name = ' . $DB->sql_concat(
+                       // We only need the prefix, so leave the third param with an empty string.
+                           "'" . get_string('tokennameprefix', 'webservice', '') . "'",
+                           "id");
+        $DB->execute($sql);
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023062700.01);
+    }
+
+    if ($oldversion < 2023062900.01) {
+
+        // Define field avatarsynced to be added to communication.
+        $table = new xmldb_table('communication');
+        $field = new xmldb_field('avatarsynced', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, 0, 'active');
+
+        // Conditionally launch add field avatarsynced.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023062900.01);
+    }
+
+    if ($oldversion < 2023080100.00) {
+        // Upgrade yaml mime type for existing yaml and yml files.
+        $filetypes = [
+            '%.yaml' => 'application/yaml',
+            '%.yml' => 'application/yaml,'
+        ];
+
+        $select = $DB->sql_like('filename', '?', false);
+        foreach ($filetypes as $extension => $mimetype) {
+            $DB->set_field_select(
+                'files',
+                'mimetype',
+                $mimetype,
+                $select,
+                [$extension]
+            );
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023080100.00);
+    }
+
+    if ($oldversion < 2023081500.00) {
+        upgrade_core_licenses();
+        upgrade_main_savepoint(true, 2023081500.00);
+    }
+
+    if ($oldversion < 2023081800.01) {
+        // Remove enabledevicedetection and devicedetectregex from config table.
+        unset_config('enabledevicedetection');
+        unset_config('devicedetectregex');
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023081800.01);
+    }
+
+    if ($oldversion < 2023082200.01) {
+        // Some MIME icons have been removed and replaced with existing icons. They need to be upgraded for custom MIME types.
+        $replacedicons = [
+            'avi' => 'video',
+            'base' => 'database',
+            'bmp' => 'image',
+            'html' => 'markup',
+            'jpeg' => 'image',
+            'mov' => 'video',
+            'mp3' => 'audio',
+            'mpeg' => 'video',
+            'png' => 'image',
+            'quicktime' => 'video',
+            'tiff' => 'image',
+            'wav' => 'audio',
+            'wmv' => 'video',
+        ];
+
+        $custom = [];
+        if (!empty($CFG->customfiletypes)) {
+            if (array_key_exists('customfiletypes', $CFG->config_php_settings)) {
+                // It's set in config.php, so the MIME icons can't be upgraded automatically.
+                echo("\nYou need to manually check customfiletypes in config.php because some MIME icons have been removed!\n");
+            } else {
+                // It's a JSON string in the config table.
+                $custom = json_decode($CFG->customfiletypes);
+            }
+        }
+
+        $changed = false;
+        foreach ($custom as $customentry) {
+            if (!empty($customentry->icon) && array_key_exists($customentry->icon, $replacedicons)) {
+                $customentry->icon = $replacedicons[$customentry->icon];
+                $changed = true;
+            }
+        }
+
+        if ($changed) {
+            // Save the new customfiletypes.
+            set_config('customfiletypes', json_encode($custom));
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023082200.01);
+    }
+
+    if ($oldversion < 2023082200.02) {
+        // Some MIME icons have been removed. They need to be replaced to 'unknown' for custom MIME types.
+        $removedicons = array_flip([
+            'clip-353',
+            'edit',
+            'env',
+            'explore',
+            'folder-open',
+            'help',
+            'move',
+            'parent',
+        ]);
+
+        $custom = [];
+        if (!empty($CFG->customfiletypes)) {
+            if (array_key_exists('customfiletypes', $CFG->config_php_settings)) {
+                // It's set in config.php, so the MIME icons can't be upgraded automatically.
+                echo("\nYou need to manually check customfiletypes in config.php because some MIME icons have been removed!\n");
+            } else {
+                // It's a JSON string in the config table.
+                $custom = json_decode($CFG->customfiletypes);
+            }
+        }
+
+        $changed = false;
+        foreach ($custom as $customentry) {
+            if (!empty($customentry->icon) && array_key_exists($customentry->icon, $removedicons)) {
+                // The icon has been removed, so set it to unknown.
+                $customentry->icon = 'unknown';
+                $changed = true;
+            }
+        }
+
+        if ($changed) {
+            // Save the new customfiletypes.
+            set_config('customfiletypes', json_encode($custom));
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023082200.02);
+    }
+
+    if ($oldversion < 2023082200.04) {
+
+        // Remove any non-unique filters/conditions.
+        $duplicates = $DB->get_records_sql("
+            SELECT MIN(id) AS id, reportid, uniqueidentifier, iscondition
+              FROM {reportbuilder_filter}
+          GROUP BY reportid, uniqueidentifier, iscondition
+            HAVING COUNT(*) > 1");
+
+        foreach ($duplicates as $duplicate) {
+            $DB->delete_records_select(
+                'reportbuilder_filter',
+                'id <> :id AND reportid = :reportid AND uniqueidentifier = :uniqueidentifier AND iscondition = :iscondition',
+                (array) $duplicate
+            );
+        }
+
+        // Define index report-filter (unique) to be added to reportbuilder_filter.
+        $table = new xmldb_table('reportbuilder_filter');
+        $index = new xmldb_index('report-filter', XMLDB_INDEX_UNIQUE, ['reportid', 'uniqueidentifier', 'iscondition']);
+
+        // Conditionally launch add index report-filter.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023082200.04);
+    }
+
+    if ($oldversion < 2023082600.02) {
+        // Get all the ids of users who still have md5 hashed passwords.
+        if ($DB->sql_regex_supported()) {
+            // If the database supports regex, we can add an exact check for md5.
+            $condition = 'password ' . $DB->sql_regex() . ' :pattern';
+            $params = ['pattern' => "^[a-fA-F0-9]{32}$"];
+        } else {
+            // Otherwise, we need to use a NOT LIKE condition and rule out bcrypt.
+            $condition = $DB->sql_like('password', ':pattern', true, false, true);
+            $params = ['pattern' => '$2y$%'];
+        }
+
+        // Regardless of database regex support we check the hash length which should be enough.
+        // But extra regex or like matching makes sure.
+        $sql = "SELECT id FROM {user} WHERE " . $DB->sql_length('password') . " = 32 AND $condition";
+        $userids = $DB->get_fieldset_sql($sql, $params);
+
+        // Update the password for each user with a new SHA-512 hash.
+        // Users won't know this password, but they can reset it. This is a security measure,
+        // in case the database is compromised or the hash has been leaked elsewhere.
+        foreach ($userids as $userid) {
+            $password = base64_encode(random_bytes(24)); // Generate a new password for the user.
+
+            $user = new \stdClass();
+            $user->id = $userid;
+            $user->password = hash_internal_user_password($password);
+            $DB->update_record('user', $user, true);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023082600.02);
+    }
+
+    if ($oldversion < 2023082600.03) {
+        // The previous default configuration had a typo, check for its presence and correct if necessary.
+        $sensiblesettings = get_config('adminpresets', 'sensiblesettings');
+        if (strpos($sensiblesettings, 'smtppass@none') !== false) {
+            $newsensiblesettings = str_replace('smtppass@none', 'smtppass@@none', $sensiblesettings);
+            set_config('sensiblesettings', $newsensiblesettings, 'adminpresets');
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023082600.03);
+    }
+
+    if ($oldversion < 2023082600.05) {
+        unset_config('completiondefault');
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023082600.05);
+    }
+
+    if ($oldversion < 2023090100.00) {
+        // Upgrade MIME type for existing PSD files.
+        $DB->set_field_select(
+            'files',
+            'mimetype',
+            'image/vnd.adobe.photoshop',
+            $DB->sql_like('filename', '?', false),
+            ['%.psd']
+        );
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023090100.00);
+    }
+
+    if ($oldversion < 2023090200.01) {
+
+        // Define table moodlenet_share_progress to be created.
+        $table = new xmldb_table('moodlenet_share_progress');
+
+        // Adding fields to table moodlenet_share_progress.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('type', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('resourceurl', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('status', XMLDB_TYPE_INTEGER, '2', null, null, null, null);
+
+        // Adding keys to table moodlenet_share_progress.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Conditionally launch create table for moodlenet_share_progress.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023090200.01);
+    }
+
+    if ($oldversion < 2023091300.03) {
+        // Delete all the searchanywhere prefs in user_preferences table.
+        $DB->delete_records('user_preferences', ['name' => 'userselector_searchanywhere']);
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023091300.03);
+    }
+
+    if ($oldversion < 2023100400.01) {
+        // Delete datakey with datavalue -1.
+        $DB->delete_records('messageinbound_datakeys', ['datavalue' => '-1']);
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023100400.01);
+    }
+
+    if ($oldversion < 2023100400.03) {
+        // Define field id to be added to communication.
+        $table = new xmldb_table('communication');
+
+        // Add the field and allow it to be nullable.
+        // We need to backfill data before setting it to NOT NULL.
+        $field = new xmldb_field(
+            name: 'contextid',
+            type: XMLDB_TYPE_INTEGER,
+            precision: '10',
+            notnull: null,
+            previous: 'id',
+        );
+
+        // Conditionally launch add field id.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Fill the existing data.
+        $sql = <<<EOF
+                    SELECT comm.id, c.id AS contextid
+                      FROM {communication} comm
+                INNER JOIN {context} c ON c.instanceid = comm.instanceid AND c.contextlevel = :contextcourse
+                     WHERE comm.contextid IS NULL
+                       AND comm.instancetype = :instancetype
+        EOF;
+        $rs = $DB->get_recordset_sql(
+            sql: $sql,
+            params: [
+                'contextcourse' => CONTEXT_COURSE,
+                'instancetype' => 'coursecommunication',
+            ],
+        );
+        foreach ($rs as $comm) {
+            $DB->set_field(
+                table: 'communication',
+                newfield: 'contextid',
+                newvalue: $comm->contextid,
+                conditions: [
+                    'id' => $comm->id,
+                ],
+            );
+        }
+        $rs->close();
+
+        $systemcontext = \core\context\system::instance();
+        $DB->set_field_select(
+            table: 'communication',
+            newfield: 'contextid',
+            newvalue: $systemcontext->id,
+            select: 'contextid IS NULL',
+        );
+
+        // Now make it NOTNULL.
+        $field = new xmldb_field(
+            name: 'contextid',
+            type: XMLDB_TYPE_INTEGER,
+            precision: '10',
+            notnull:  XMLDB_NOTNULL,
+        );
+        $dbman->change_field_notnull($table, $field);
+
+        // Add the contextid constraint.
+        $key = new xmldb_key('contextid', XMLDB_KEY_FOREIGN, ['contextid'], 'context', ['id']);
+        $dbman->add_key($table, $key);
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023100400.03);
+    }
+
+    // Automatically generated Moodle v4.3.0 release upgrade line.
+    // Put any upgrade step following this.
+
+
+    if ($oldversion < 2023100902.01) {
+        $sqllike = $DB->sql_like('filtercondition', '?');
+        $params[] = '%includesubcategories%';
+
+        $sql = "SELECT qsr.* FROM {question_set_references} qsr WHERE $sqllike";
+        $results = $DB->get_recordset_sql($sql, $params);
+        foreach ($results as $result) {
+            $filtercondition = json_decode($result->filtercondition);
+            if (isset($filtercondition->filter->category->includesubcategories)) {
+                $filtercondition->filter->category->filteroptions =
+                    ['includesubcategories' => $filtercondition->filter->category->includesubcategories];
+                unset($filtercondition->filter->category->includesubcategories);
+                $result->filtercondition = json_encode($filtercondition);
+                $DB->update_record('question_set_references', $result);
+            }
+        }
+        $results->close();
+
+        upgrade_main_savepoint(true, 2023100902.01);
+    }
+
+    if ($oldversion < 2023100902.07) {
+        // If h5plib_v124 is no longer present, remove it.
+        if (!file_exists($CFG->dirroot . '/h5p/h5plib/v124/version.php')) {
+            // Clean config.
+            uninstall_plugin('h5plib', 'v124');
+        }
+
+        // If h5plib_v126 is present, set it as the default one.
+        if (file_exists($CFG->dirroot . '/h5p/h5plib/v126/version.php')) {
+            set_config('h5plibraryhandler', 'h5plib_v126');
+        }
+
+        upgrade_main_savepoint(true, 2023100902.07);
+    }
+
+    if ($oldversion < 2023100903.05) {
+
+        // Get all "select" custom field shortnames.
+        $fieldshortnames = $DB->get_fieldset_select('customfield_field', 'shortname', 'type = :type', ['type' => 'select']);
+
+        // Ensure any used in custom reports columns are not using integer type aggregation.
+        foreach ($fieldshortnames as $fieldshortname) {
+            $DB->execute("
+                UPDATE {reportbuilder_column}
+                   SET aggregation = NULL
+                 WHERE " . $DB->sql_like('uniqueidentifier', ':uniqueidentifier', false) . "
+                   AND aggregation IN ('avg', 'max', 'min', 'sum')
+            ", [
+                'uniqueidentifier' => '%' . $DB->sql_like_escape(":customfield_{$fieldshortname}"),
+            ]);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023100903.05);
+    }
+
+    if ($oldversion < 2023100905.09) {
+
+        // Fix missing default admin presets "sensible settings" (those that should be treated as sensitive).
+        $newsensiblesettings = [
+            'bigbluebuttonbn_shared_secret@@none',
+            'apikey@@tiny_premium',
+            'matrixaccesstoken@@communication_matrix',
+        ];
+
+        $sensiblesettings = get_config('adminpresets', 'sensiblesettings');
+        foreach ($newsensiblesettings as $newsensiblesetting) {
+            if (strpos($sensiblesettings, $newsensiblesetting) === false) {
+                $sensiblesettings .= ", {$newsensiblesetting}";
+            }
+        }
+
+        set_config('sensiblesettings', $sensiblesettings, 'adminpresets');
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2023100905.09);
+    }
+
+    if ($oldversion < 2023100907.08) {
+        // If h5plib_v126 is no longer present, remove it.
+        if (!file_exists($CFG->dirroot . '/h5p/h5plib/v126/version.php')) {
+            // Clean config.
+            uninstall_plugin('h5plib', 'v126');
+        }
+
+        // If h5plib_v127 is present, set it as the default one.
+        if (file_exists($CFG->dirroot . '/h5p/h5plib/v127/version.php')) {
+            set_config('h5plibraryhandler', 'h5plib_v127');
+        }
+
+        upgrade_main_savepoint(true, 2023100907.08);
     }
 
     return true;

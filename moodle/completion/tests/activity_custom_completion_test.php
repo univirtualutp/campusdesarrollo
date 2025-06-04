@@ -30,7 +30,7 @@ use PHPUnit\Framework\MockObject\MockObject;
  * @copyright 2021 Jun Pataleta <jun@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class activity_custom_completion_test extends advanced_testcase {
+final class activity_custom_completion_test extends advanced_testcase {
 
     /**
      * Fetches a mocked activity_custom_completion instance.
@@ -48,7 +48,7 @@ class activity_custom_completion_test extends advanced_testcase {
     /**
      * Data provider for test_get_overall_completion_state().
      */
-    public function overall_completion_state_provider(): array {
+    public static function overall_completion_state_provider(): array {
         global $CFG;
         require_once($CFG->libdir . '/completionlib.php');
         return [
@@ -56,25 +56,37 @@ class activity_custom_completion_test extends advanced_testcase {
                 ['completionsubmit', 'completioncreate'],
                 [COMPLETION_INCOMPLETE, COMPLETION_COMPLETE],
                 1,
-                COMPLETION_INCOMPLETE
+                COMPLETION_INCOMPLETE,
             ],
             'First complete, second incomplete' => [
                 ['completionsubmit', 'completioncreate'],
                 [COMPLETION_COMPLETE, COMPLETION_INCOMPLETE],
                 2,
-                COMPLETION_INCOMPLETE
+                COMPLETION_INCOMPLETE,
+            ],
+            'First complete, second failed' => [
+                ['completionsubmit', 'completioncreate'],
+                [COMPLETION_COMPLETE, COMPLETION_COMPLETE_FAIL],
+                2,
+                COMPLETION_COMPLETE_FAIL,
+            ],
+            'First complete, second incomplete, third failed' => [
+                ['completionsubmit', 'completioncreate'],
+                [COMPLETION_COMPLETE, COMPLETION_INCOMPLETE, COMPLETION_COMPLETE_FAIL],
+                2,
+                COMPLETION_INCOMPLETE,
             ],
             'All complete' => [
                 ['completionsubmit', 'completioncreate'],
                 [COMPLETION_COMPLETE, COMPLETION_COMPLETE],
                 2,
-                COMPLETION_COMPLETE
+                COMPLETION_COMPLETE,
             ],
             'No rules' => [
                 [],
                 [],
                 0,
-                COMPLETION_COMPLETE
+                COMPLETION_COMPLETE,
             ],
         ];
     }
@@ -121,7 +133,7 @@ class activity_custom_completion_test extends advanced_testcase {
      *
      * @return array[]
      */
-    public function validate_rule_provider() {
+    public static function validate_rule_provider(): array {
         return [
             'Not defined' => [
                 false, true, coding_exception::class

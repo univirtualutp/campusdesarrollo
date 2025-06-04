@@ -69,30 +69,31 @@ body#page-course-view-remuiformat {
             flex-direction: row;
             justify-content: space-between;
             align-items: center;
-            gap: $gap-24;
-            flex-wrap: wrap;
+            gap: $gap-32 $gap-24;
+            // flex-wrap: wrap;
 
             @media (max-width:1200px) {
-                align-items: unset;
-                justify-content: space-between;
+                // align-items: unset;
+                // justify-content: space-between;
             }
 
             @media (max-width:$sm-screen-bp) {
-                // align-items: unset;
+                align-items: start;
                 flex-direction: column;
-                gap: 32px;
+                // gap: 32px;
                 // justify-content: space-between;
             }
 
             .rating-instructor-wrapper {
                 display: flex;
-                gap: $gap-24;
+                gap: $gap-12 $gap-24;
                 flex-wrap: wrap;
+                align-items: center;
 
                 @media (max-width:1200px) {
-                    gap: $gap-24;
-                    flex-direction: column;
-                    justify-content: space-between;
+                    // gap: $gap-24;
+                    // flex-direction: column;
+                    // justify-content: space-between;
                 }
 
                 @media (max-width:$sm-screen-bp) {
@@ -123,15 +124,50 @@ body#page-course-view-remuiformat {
                     }
                 }
 
+                .stat-container {
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 8px 16px;
+                }
+
                 .instructor-info {
                     color: $white;
 
                     .stat {
-                        @include frmt-font-styling(14px,22px,400);
+                        @include frmt-font-styling(14px,22px,600);
                         color: #313848;
                         padding: $pad-4;
                         border-radius: $border-radius-4;
                         background-color: #fff;
+                    }
+
+                    .userpicture,
+                    .userinitials {
+                        width: 24px;
+                        height: 24px;
+                        border: unset;
+                    }
+
+                    .userinitials {
+                        font-size: 12px;
+                    }
+
+                    .view-user-profile-link {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                    }
+
+                    .titles {
+                        @include frmt-font-styling(14px,22px,400);
+                        color: $white;
+                    }
+                    .view-all-instructorslink {
+                        @include frmt-font-styling(14px,22px,600);
+                        color: $white;
                     }
                 }
             }
@@ -139,10 +175,9 @@ body#page-course-view-remuiformat {
             .progress-resume-wrapper {
                 display: flex;
                 align-items: center;
-                gap: 40px;
+                gap: $gap-24 $gap-40;
 
                 @media (max-width:1200px) {
-                    gap: $gap-24;
                     flex-direction: column;
                 }
 
@@ -150,6 +185,7 @@ body#page-course-view-remuiformat {
                     gap: $gap-16;
                     flex-wrap: wrap;
                     align-items: flex-start;
+                    width: 100%;
                 }
 
                 .progressbar-text-wrapper {
@@ -176,6 +212,15 @@ body#page-course-view-remuiformat {
 
         .header-heading {
             color: white;
+        }
+    }
+    &.editing  {
+        header.hasbackground.design-1 {
+            justify-content: flex-end !important;
+
+            .header-sub-section {
+                justify-content: flex-start;
+            }
         }
     }
     .summary-collapsed{
@@ -230,6 +275,13 @@ body#page-course-view-remuiformat {
         }
     }
     &.editing {
+        ul.remuiformat{
+            padding-left: 0px;
+        }
+        .course-section .section-item{
+            background-color: white;
+            padding: 1rem;
+        }
         .yui3-dd-proxy {
             .section {
                 text-decoration: none;
@@ -237,9 +289,23 @@ body#page-course-view-remuiformat {
         }
         .action-menu-trigger,
         .action-menu {
-            .dropdown-toggle::after {
-                display: none;
+          .dropdown-toggle::after {
+            display: none;
+          }
+
+          .dropdown-subpanel {
+            .dropdown-toggle{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                &::before {
+                    display: inline-block;
+                    order: 3;
+                    transform: rotate(180deg);
+                    font-size: 10px;
+                }
             }
+          }
         }
         .stretched-link::after {
             display: none;
@@ -387,6 +453,19 @@ body#page-course-view-remuiformat {
             background-color: $white;
         }
 
+        &.activity-wrapper {
+            .activity-item:has(.section.delegated-section) {
+                padding: 0;
+                border: 0;
+
+                box-shadow: unset;
+
+                .section-item:hover {
+                    box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075);
+                }
+            }
+        }
+
         .description,.activity-grid  {
             .availabilityinfo{
                 // width: fit-content;
@@ -410,7 +489,7 @@ body#page-course-view-remuiformat {
                         }
                     }
                 }
-                
+
             }
 
             .activity-altcontent,
@@ -510,6 +589,9 @@ body#page-course-view-remuiformat {
                             padding: 0px;
                             margin: 0px;
                             max-width: unset;
+                            .section{
+                                list-style: none;
+                            }
                             .activity {
                                 &:not(.modtype_label) {
                                     padding: $pad-24;
@@ -617,7 +699,48 @@ body#page-course-view-remuiformat {
                                     text-align: left;
                                     color: $paragraph-color;
                                 }
+                                .activityinstance{
+                                    position: relative;
+                                }
                             }
+                        }
+
+                        .general-section-activities.list-view-general-activities {
+                            display: flex;
+                            flex-direction: column;
+
+                            .section.delegated-section.list-summary-section  {
+                                padding: 24px;
+                            }
+
+                            & > .activity.indented {
+                                margin-left: 24px;
+                            }
+
+                            .activity {
+                                min-height: unset;
+
+                                .activityinstance {
+                                    align-items: unset;
+
+                                    .contentafterlink {
+                                        .no-overflow {
+                                            .no-overflow {
+                                                margin-left: 74px;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                .activitytitle {
+                                    display: flex;
+                                    flex-direction: row;
+                                    align-items: center;
+                                    width: 100%;
+                                    gap: $gap-26;
+                                }
+                            }
+
                         }
                     }
 
@@ -917,7 +1040,7 @@ body#page-course-view-remuiformat {
         justify-content: space-between;
         width: 100%;
         // overflow: auto;
-        
+
         p {
             margin: 0;
         }
@@ -940,6 +1063,9 @@ body#page-course-view-remuiformat {
 
     .availabilityinfo {
         &.isrestricted {
+            .showmore-container{
+                text-align: left;
+            }
             .showmore-container .btn{
                 span.expanded-content{
                     padding: 1px;
@@ -976,4 +1102,79 @@ body#page-course-view-remuiformat {
             }
         }
     }
+
+    &.limitedwidth  {
+        header.hasbackground.design-1 {
+            .header-sub-section {
+                .progress-resume-wrapper {
+                    flex-direction: column;
+                }
+            }
+        }
+    }
+
+    // .bulkEnable {
+    //     display: none;
+    // }
+}
+.section{
+    .dndupload-preview-overlay,.dndupload-preview-wrapper{
+        display: none;
+    }
+}
+
+.single-section ul.remuiformat {
+    padding-left: 0;
+}
+
+.section.delegated-section {
+    text-align: start;
+    border-radius: 8px;
+
+    .wdm-add-new-section {
+        display: none;
+    }
+
+    &::after {
+        content: unset;
+    }
+
+    .content .section:not(:has(:first-child)) {
+        display: none !important;
+    }
+}
+
+
+body:not(.editing) #page-content .course-content ul li.section.main.delegated-section {
+    margin-top: 0.25rem;
+}
+
+// drag and drop icon removed temprarly from moodle4.5
+.edw-m405 #page .editing_move {
+	display: none !important;
+}
+
+
+.erf-ml-2{
+    margin-left: 0.5rem !important;
+}
+
+.erf-ml-1{
+    margin-left: 0.25rem !important;
+}
+
+.erf-ml-auto{
+    margin-left: auto !important;
+}
+.erf-float-left{
+    float: left !important;
+}
+.erf-float-right{
+    float: right !important;
+}
+.erf-text-right{
+    text-align: right !important;
+}
+.erf-text-left{
+    text-align: left !important;
 }

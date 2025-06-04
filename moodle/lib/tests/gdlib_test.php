@@ -24,7 +24,7 @@ namespace core;
  * @copyright  2015 Andrew Nicols <andrew@nicols.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class gdlib_test extends \basic_testcase {
+final class gdlib_test extends \basic_testcase {
 
     private $fixturepath = null;
 
@@ -87,7 +87,7 @@ class gdlib_test extends \basic_testcase {
         $newpng = resize_image($pngpath, null, 24);
         $this->assertTrue(is_string($newpng));
         $imageinfo = getimagesizefromstring($newpng);
-        $this->assertEquals(89, $imageinfo[0]);
+        $this->assertEquals(90, $imageinfo[0]);
         $this->assertEquals(24, $imageinfo[1]);
         $this->assertEquals('image/png', $imageinfo['mime']);
 
@@ -96,7 +96,7 @@ class gdlib_test extends \basic_testcase {
         $this->assertTrue(is_string($newpng));
         $imageinfo = getimagesizefromstring($newpng);
         $this->assertEquals(100, $imageinfo[0]);
-        $this->assertEquals(26, $imageinfo[1]);
+        $this->assertEquals(27, $imageinfo[1]);
         $this->assertEquals('image/png', $imageinfo['mime']);
 
         // Preferred width and height.
@@ -121,7 +121,7 @@ class gdlib_test extends \basic_testcase {
         $newpng = resize_image_from_image($imageresource, $origimageinfo, null, 24);
         $this->assertTrue(is_string($newpng));
         $imageinfo = getimagesizefromstring($newpng);
-        $this->assertEquals(89, $imageinfo[0]);
+        $this->assertEquals(90, $imageinfo[0]);
         $this->assertEquals(24, $imageinfo[1]);
         $this->assertEquals('image/png', $imageinfo['mime']);
 
@@ -131,7 +131,7 @@ class gdlib_test extends \basic_testcase {
         $this->assertTrue(is_string($newpng));
         $imageinfo = getimagesizefromstring($newpng);
         $this->assertEquals(100, $imageinfo[0]);
-        $this->assertEquals(26, $imageinfo[1]);
+        $this->assertEquals(27, $imageinfo[1]);
         $this->assertEquals('image/png', $imageinfo['mime']);
 
         // Preferred width and height.

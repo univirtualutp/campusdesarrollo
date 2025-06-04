@@ -33,11 +33,6 @@ Feature: Course activity controls works as expected
     And I log in as "teacher1"
     And I am on "Course 1" course homepage with editing mode on
     When I click on <targetpage> "link" in the "region-main" "region"
-    And I add the "Recent activity" block
-    And I open the action menu in "Recent activity" "block"
-    And I click on "Delete Recent activity block" "link"
-    And I click on "Delete" "button" in the "Delete block?" "dialogue"
-    And <belowpage> "section" <should_see_other_sections> exist
     And <belowpage> "section" <should_see_other_sections> exist
     And I open "Test forum name 1" actions menu
     And I click on "Edit settings" "link" in the "Test forum name 1" activity
@@ -50,7 +45,7 @@ Feature: Course activity controls works as expected
     And I click on "Cancel" "button"
     And <belowpage> "section" <should_see_other_sections> exist
     And I open "Test forum name 1" actions menu
-    And I click on "Hide" "link" in the "Test forum name 1" activity
+    And I choose "Availability > Hide on course page" in the open action menu
     And <belowpage> "section" <should_see_other_sections> exist
     And I delete "Test forum name 1" activity
     And I should not see "Test forum name 1" in the "region-main" "region"
@@ -100,17 +95,13 @@ Feature: Course activity controls works as expected
     And I log in as "teacher1"
     And I am on "Course 1" course homepage with editing mode on
     When I click on <targetpage> "link" in the "region-main" "region"
-    And I add the "Recent activity" block
-    And I open the action menu in "Recent activity" "block"
-    And I click on "Delete Recent activity block" "link"
-    And I press "Yes"
     And <belowpage> "section" <should_see_other_sections> exist
     And I click on "Edit settings" "link" in the "Test forum name 1" activity
     And I should see "Updating Forum"
     And I should see "Display description on course page"
     And I press "Save and return to course"
     And <belowpage> "section" <should_see_other_sections> exist
-    And I click on "Hide" "link" in the "Test forum name 1" activity
+    And I click on "Hide on course page" "link" in the "Test forum name 1" activity
     And <belowpage> "section" <should_see_other_sections> exist
     And I delete "Test forum name 1" activity
     And <belowpage> "section" <should_see_other_sections> exist

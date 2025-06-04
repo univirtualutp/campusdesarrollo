@@ -16,11 +16,6 @@
 
 namespace core;
 
-defined('MOODLE_INTERNAL') || die();
-
-global $CFG;
-require_once($CFG->dirroot . '/lib/myprofilelib.php');
-
 /**
  * Tests for myprofilelib apis.
  *
@@ -28,7 +23,7 @@ require_once($CFG->dirroot . '/lib/myprofilelib.php');
  * @copyright  2015 onwards Ankit agarwal <ankit.agrr@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later.
  */
-class myprofilelib_test extends \advanced_testcase {
+final class myprofilelib_test extends \advanced_testcase {
 
     /**
      * @var stdClass The user.
@@ -44,6 +39,16 @@ class myprofilelib_test extends \advanced_testcase {
      * @var \core_user\output\myprofile\tree The navigation tree.
      */
     private $tree;
+
+    /**
+     * Load required test libraries
+     */
+    public static function setUpBeforeClass(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/lib/myprofilelib.php');
+        require_once($CFG->dirroot . '/user/profile/lib.php');
+    }
+
     public function setUp(): void {
         // Set the $PAGE->url value so core_myprofile_navigation() doesn't complain.
         global $PAGE;
@@ -228,7 +233,7 @@ class myprofilelib_test extends \advanced_testcase {
      *
      * @return array[]
      */
-    public function core_myprofile_navigation_contact_timezone_provider(): array {
+    public static function core_myprofile_navigation_contact_timezone_provider(): array {
         return [
             'Hidden field' => ['timezone', '99', '99', null],
             'Forced timezone' => ['', 'Europe/London', 'Pacific/Tahiti', 'Europe/London'],

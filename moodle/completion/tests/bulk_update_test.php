@@ -30,13 +30,13 @@ require_once($CFG->libdir . '/completionlib.php');
  * @copyright  2017 Marina Glancy
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class bulk_update_test extends \advanced_testcase {
+final class bulk_update_test extends \advanced_testcase {
 
     /**
      * Provider for test_bulk_form_submit_single
      * @return array
      */
-    public function bulk_form_submit_single_provider() {
+    public static function bulk_form_submit_single_provider(): array {
         return [
             'assign-1' => ['assign', ['completion' => COMPLETION_TRACKING_AUTOMATIC, 'completionsubmit' => 1]],
             'assign-2' => ['assign', ['completion' => COMPLETION_TRACKING_MANUAL]],
@@ -81,10 +81,18 @@ class bulk_update_test extends \advanced_testcase {
             'resource-1' => ['resource', ['completion' => COMPLETION_TRACKING_AUTOMATIC, 'completionview' => 1]],
             'resource-2' => ['resource', ['completion' => COMPLETION_TRACKING_MANUAL]],
             'scorm-1' => ['scorm',
-                ['completion' => COMPLETION_TRACKING_AUTOMATIC, 'completionscorerequired' => 1,
-                    'completionstatusrequired' => [2 => 'passed']],
-                ['completion' => COMPLETION_TRACKING_AUTOMATIC, 'completionscorerequired' => 1,
-                    'completionstatusrequired' => 2]],
+                [
+                    'completion' => COMPLETION_TRACKING_AUTOMATIC,
+                    'completionscoreenabled' => 1,
+                    'completionscorerequired' => 1,
+                    'completionstatusrequired' => [2 => 'passed'],
+                ],
+                [
+                    'completion' => COMPLETION_TRACKING_AUTOMATIC,
+                    'completionscorerequired' => 1,
+                    'completionstatusrequired' => 2,
+                ],
+            ],
             'scorm-2' => ['scorm', ['completion' => COMPLETION_TRACKING_MANUAL]],
             'survey-1' => ['survey', ['completion' => COMPLETION_TRACKING_AUTOMATIC, 'completionsubmit' => 1]],
             'survey-2' => ['survey', ['completion' => COMPLETION_TRACKING_MANUAL]],
@@ -171,7 +179,7 @@ class bulk_update_test extends \advanced_testcase {
      * Provider for test_bulk_form_submit_multiple
      * @return array
      */
-    public function bulk_form_submit_multiple_provider() {
+    public static function bulk_form_submit_multiple_provider(): array {
         return [
             'Several modules with the same module type (choice)' => [
                 [

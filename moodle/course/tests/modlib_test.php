@@ -16,12 +16,6 @@
 
 namespace core_course;
 
-defined('MOODLE_INTERNAL') || die();
-
-global $CFG;
-require_once($CFG->dirroot . '/course/lib.php');
-require_once($CFG->dirroot . '/course/modlib.php');
-
 /**
  * Module lib related unit tests
  *
@@ -30,7 +24,16 @@ require_once($CFG->dirroot . '/course/modlib.php');
  * @copyright  2016 Juan Leyva
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class modlib_test extends \advanced_testcase {
+final class modlib_test extends \advanced_testcase {
+    /**
+     * Setup to ensure that fixtures are loaded.
+     */
+    public static function setUpBeforeClass(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/course/lib.php');
+        require_once($CFG->dirroot . '/course/modlib.php');
+        parent::setUpBeforeClass();
+    }
 
     /**
      * Test prepare_new_moduleinfo_data
@@ -78,6 +81,50 @@ class modlib_test extends \advanced_testcase {
         $this->setUser($viewer);
         $this->expectException('required_capability_exception');
         prepare_new_moduleinfo_data($course, $assignmodule->name, $sectionnumber);
+    }
+
+    /**
+     * Test prepare_new_moduleinfo_data with suffix (which is currently only used by the completion rules).
+     * @covers ::prepare_new_moduleinfo_data
+     */
+    public function test_prepare_new_moduleinfo_data_with_suffix() {
+        global $DB;
+        $this->resetAfterTest(true);
+
+        $this->setAdminUser();
+        $course = self::getDataGenerator()->create_course();
+        $coursecontext = \context_course::instance($course->id);
+        // Test with a complex module, like assign.
+        $assignmodule = $DB->get_record('modules', ['name' => 'assign'], '*', MUST_EXIST);
+        $sectionnumber = 1;
+
+        $suffix = 'mysuffix';
+        [$module, $context, $cw, $cm, $data] = prepare_new_moduleinfo_data($course, $assignmodule->name, $sectionnumber, $suffix);
+        $this->assertEquals($assignmodule, $module);
+        $this->assertEquals($coursecontext, $context);
+        $this->assertNull($cm); // Not cm yet.
+
+        $expecteddata = new \stdClass();
+        $expecteddata->section          = $sectionnumber;
+        $expecteddata->visible          = 1;
+        $expecteddata->course           = $course->id;
+        $expecteddata->module           = $module->id;
+        $expecteddata->modulename       = $module->name;
+        $expecteddata->groupmode        = $course->groupmode;
+        $expecteddata->groupingid       = $course->defaultgroupingid;
+        $expecteddata->id               = '';
+        $expecteddata->instance         = '';
+        $expecteddata->coursemodule     = '';
+        $expecteddata->advancedgradingmethod_submissions = ''; // Not grading methods enabled by default.
+        $expecteddata->{'completion' . $suffix} = 0;
+        $expecteddata->downloadcontent  = DOWNLOAD_COURSE_CONTENT_ENABLED;
+
+        // Unset untestable.
+        unset($data->introeditor);
+        unset($data->_advancedgradingdata);
+
+        $this->assertEquals($expecteddata, $data);
+        $this->assertFalse(property_exists($data, 'completion'));
     }
 
     /**

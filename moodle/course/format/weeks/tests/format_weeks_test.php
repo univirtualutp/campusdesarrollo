@@ -30,7 +30,7 @@ require_once($CFG->dirroot . '/course/lib.php');
  * @copyright  2015 Marina Glancy
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class format_weeks_test extends \advanced_testcase {
+final class format_weeks_test extends \advanced_testcase {
 
     /**
      * Tests for format_weeks::get_section_name method with default section names.
@@ -221,8 +221,8 @@ class format_weeks_test extends \advanced_testcase {
         $courseform = new \testable_course_edit_form(null, $args);
         $courseform->definition_after_data();
 
-        // format_weeks::get_section_dates is adding 2h to avoid DST problems, we need to replicate it here.
-        $enddate = $params['startdate'] + (WEEKSECS * $params['numsections']) + 7200;
+        // Calculate the expected end date.
+        $enddate = $params['startdate'] + (WEEKSECS * $params['numsections']);
 
         $weeksformat = course_get_format($course->id);
         $this->assertEquals($enddate, $weeksformat->get_default_course_enddate($courseform->get_quick_form()));

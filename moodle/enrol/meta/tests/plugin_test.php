@@ -16,6 +16,9 @@
 
 namespace enrol_meta;
 
+use context_course;
+use enrol_meta_plugin;
+
 /**
  * Meta enrolment sync functional test.
  *
@@ -24,7 +27,7 @@ namespace enrol_meta;
  * @copyright  2013 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class plugin_test extends \advanced_testcase {
+final class plugin_test extends \advanced_testcase {
 
     protected function enable_plugin() {
         $enabled = enrol_get_plugins(true);
@@ -595,6 +598,40 @@ class plugin_test extends \advanced_testcase {
     }
 
     /**
+     * Test enrolling users in a course, where the customint2 (group) property of the instance points to an invalid group
+     *
+     * @covers \enrol_meta_handler::sync_with_parent_course
+     * @covers ::enrol_meta_sync
+     */
+    public function test_add_to_group_invalid(): void {
+        $this->resetAfterTest();
+
+        $this->enable_plugin();
+
+        $courseone = $this->getDataGenerator()->create_course();
+        $coursetwo = $this->getDataGenerator()->create_course();
+
+        /** @var enrol_meta_plugin $plugin */
+        $plugin = enrol_get_plugin('meta');
+        $plugin->add_instance($coursetwo, ['customint1' => $courseone->id, 'customint2' => 42]);
+
+        // Ensure the event observer works for invalid groups.
+        $userone = $this->getDataGenerator()->create_and_enrol($courseone);
+
+        // Now disable the plugin, add another enrolment.
+        $this->disable_plugin();
+        $usertwo = $this->getDataGenerator()->create_and_enrol($courseone);
+
+        // Re-enable the plugin, run sync task - should also work for invalid groups.
+        $this->enable_plugin();
+        enrol_meta_sync($coursetwo->id);
+
+        $coursetwocontext = context_course::instance($coursetwo->id);
+        $this->assertTrue(is_enrolled($coursetwocontext, $userone));
+        $this->assertTrue(is_enrolled($coursetwocontext, $usertwo));
+    }
+
+    /**
      * Test user_enrolment_created event.
      */
     public function test_user_enrolment_created_event() {
@@ -698,12 +735,15 @@ class plugin_test extends \advanced_testcase {
      * Test that a new group with the name of the course is created.
      */
     public function test_enrol_meta_create_new_group() {
-        global $DB;
+        global $DB, $CFG;
         $this->resetAfterTest();
         // Create two courses.
         $course = $this->getDataGenerator()->create_course(array('fullname' => 'Mathematics'));
         $course2 = $this->getDataGenerator()->create_course(array('fullname' => 'Physics'));
         $metacourse = $this->getDataGenerator()->create_course(array('fullname' => 'All sciences'));
+
+        require_once($CFG->dirroot.'/enrol/meta/locallib.php');
+
         // Run the function.
         $groupid = enrol_meta_create_new_group($metacourse->id, $course->id);
         // Check the results.

@@ -39,8 +39,7 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @copyright  2012 Jerome Mouneyrac
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class externallib_test extends externallib_advanced_testcase {
-    //core_course_externallib_testcase
+final class externallib_test extends externallib_advanced_testcase {
 
     /**
      * Tests set up
@@ -366,6 +365,44 @@ class externallib_test extends externallib_advanced_testcase {
     }
 
     /**
+     * Test update_categories method for moving categories
+     */
+    public function test_update_categories_moving() {
+        $this->resetAfterTest();
+
+        // Create data.
+        $categorya  = self::getDataGenerator()->create_category([
+            'name' => 'CAT_A',
+        ]);
+        $categoryasub = self::getDataGenerator()->create_category([
+            'name' => 'SUBCAT_A',
+            'parent' => $categorya->id
+        ]);
+        $categoryb  = self::getDataGenerator()->create_category([
+            'name' => 'CAT_B',
+        ]);
+
+        // Create a new test user.
+        $testuser = self::getDataGenerator()->create_user();
+        $this->setUser($testuser);
+
+        // Set the capability for CAT_A only.
+        $contextcata = context_coursecat::instance($categorya->id);
+        $roleid = $this->assignUserCapability('moodle/category:manage', $contextcata->id);
+
+        // Then we move SUBCAT_A parent: CAT_A => CAT_B.
+        $categories = [
+            [
+                'id' => $categoryasub->id,
+                'parent' => $categoryb->id
+            ]
+        ];
+
+        $this->expectException('required_capability_exception');
+        core_course_external::update_categories($categories);
+    }
+
+    /**
      * Test create_courses numsections
      */
     public function test_create_course_numsections() {
@@ -415,10 +452,12 @@ class externallib_test extends externallib_advanced_testcase {
         // Custom fields.
         $fieldcategory = self::getDataGenerator()->create_custom_field_category(['name' => 'Other fields']);
 
-        $customfield = ['shortname' => 'test', 'name' => 'Custom field', 'type' => 'text',
-            'categoryid' => $fieldcategory->get('id'),
-            'configdata' => ['visibility' => \core_course\customfield\course_handler::VISIBLETOALL]];
-        $field = self::getDataGenerator()->create_custom_field($customfield);
+        $fieldtext = self::getDataGenerator()->create_custom_field([
+            'categoryid' => $fieldcategory->get('id'), 'name' => 'Text', 'shortname' => 'text', 'type' => 'text',
+        ]);
+        $fieldtextarea = self::getDataGenerator()->create_custom_field([
+            'categoryid' => $fieldcategory->get('id'), 'name' => 'Textarea', 'shortname' => 'textarea', 'type' => 'textarea',
+        ]);
 
         // Set the required capabilities by the external function
         $contextid = context_system::instance()->id;
@@ -470,7 +509,10 @@ class externallib_test extends externallib_advanced_testcase {
         $course4['fullname'] = 'Test course with custom fields';
         $course4['shortname'] = 'Testcoursecustomfields';
         $course4['categoryid'] = $category->id;
-        $course4['customfields'] = [['shortname' => $customfield['shortname'], 'value' => 'Test value']];
+        $course4['customfields'] = [
+            ['shortname' => $fieldtext->get('shortname'), 'value' => 'And I want to tell you so much'],
+            ['shortname' => $fieldtextarea->get('shortname'), 'value' => 'I love you'],
+        ];
         $courses = array($course4, $course1, $course2, $course3);
 
         $createdcourses = core_course_external::create_courses($courses);
@@ -542,7 +584,10 @@ class externallib_test extends externallib_advanced_testcase {
 
                 $handler = core_course\customfield\course_handler::create();
                 $customfields = $handler->export_instance_data_object($createdcourse['id']);
-                $this->assertEquals((object)['test' => 'Test value'], $customfields);
+                $this->assertEquals((object) [
+                    'text' => 'And I want to tell you so much',
+                    'textarea' => '<div class="text_to_html">I love you</div>',
+                ], $customfields);
             } else {
                 throw new moodle_exception('Unexpected shortname');
             }
@@ -562,7 +607,7 @@ class externallib_test extends externallib_advanced_testcase {
      *
      * @return array
      */
-    public function course_empty_field_provider(): array {
+    public static function course_empty_field_provider(): array {
         return [
             [[
                 'fullname' => '',
@@ -1110,6 +1155,15 @@ class externallib_test extends externallib_advanced_testcase {
         $CFG->forum_allowforcedreadtracking = 1;
         list($course, $forumcm, $datacm, $pagecm, $labelcm, $urlcm) = $this->prepare_get_course_contents_test();
 
+        // Create a resource with all the appearance options enabled. By default it's a text file and will be added to section 1.
+        $record = (object) [
+            'course' => $course->id,
+            'showsize' => 1,
+            'showtype' => 1,
+            'showdate' => 1,
+        ];
+        $resource = self::getDataGenerator()->create_module('resource', $record);
+
         // We first run the test as admin.
         $this->setAdminUser();
         $sections = core_course_external::get_course_contents($course->id, array());
@@ -1126,9 +1180,13 @@ class externallib_test extends externallib_advanced_testcase {
                 $this->assertEquals($formattedtext, $module['description']);
                 $this->assertEquals($forumcm->instance, $module['instance']);
                 $this->assertEquals(context_module::instance($forumcm->id)->id, $module['contextid']);
-                $this->assertStringContainsString('1 unread post', $module['afterlink']);
                 $this->assertFalse($module['noviewlink']);
                 $this->assertNotEmpty($module['description']);  // Module showdescription is on.
+                // Afterlink for forums has been removed; it has been moved to the new activity badge content.
+                $this->assertEmpty($module['afterlink']);
+                $this->assertEquals('1 unread post', $module['activitybadge']['badgecontent']);
+                $this->assertEquals('badge-dark', $module['activitybadge']['badgestyle']);
+
                 $testexecuted = $testexecuted + 2;
             } else if ($module['id'] == $labelcm->id and $module['modname'] == 'label') {
                 $cm = $modinfo->cms[$labelcm->id];
@@ -1145,6 +1203,12 @@ class externallib_test extends externallib_advanced_testcase {
                 $this->assertFalse($module['noviewlink']);
                 $this->assertArrayNotHasKey('description', $module);
                 $testexecuted = $testexecuted + 1;
+            } else if ($module['instance'] == $resource->id && $module['modname'] == 'resource') {
+                // Resources have both, afterlink for the size and the update date and activitybadge for the file type.
+                $this->assertStringContainsString('32 bytes', $module['afterlink']);
+                $this->assertEquals('TXT', $module['activitybadge']['badgecontent']);
+                $this->assertEquals('badge-none', $module['activitybadge']['badgestyle']);
+                $testexecuted = $testexecuted + 1;
             }
         }
         foreach ($sections[2]['modules'] as $module) {
@@ -1157,10 +1221,10 @@ class externallib_test extends externallib_advanced_testcase {
         $CFG->forum_allowforcedreadtracking = 0;    // Recover original value.
         forum_tp_count_forum_unread_posts($forumcm, $course, true);    // Reset static cache for further tests.
 
-        $this->assertEquals(5, $testexecuted);
+        $this->assertEquals(6, $testexecuted);
         $this->assertEquals(0, $sections[0]['section']);
 
-        $this->assertCount(6, $sections[0]['modules']);
+        $this->assertCount(7, $sections[0]['modules']);
         $this->assertCount(1, $sections[1]['modules']);
         $this->assertCount(1, $sections[2]['modules']);
         $this->assertCount(1, $sections[3]['modules']); // One module for the section with availability restrictions.
@@ -1819,12 +1883,17 @@ class externallib_test extends externallib_advanced_testcase {
 
         // Course with custom fields.
         $fieldcategory = self::getDataGenerator()->create_custom_field_category(['name' => 'Other fields']);
-        $customfield = ['shortname' => 'test', 'name' => 'Custom field', 'type' => 'text',
-            'categoryid' => $fieldcategory->get('id'),
-            'configdata' => ['visibility' => \core_course\customfield\course_handler::VISIBLETOALL, 'locked' => 1]];
-        $field = self::getDataGenerator()->create_custom_field($customfield);
 
-        $originalcourse3 = self::getDataGenerator()->create_course(['customfield_test' => 'Test value']);
+        $fieldtext = self::getDataGenerator()->create_custom_field([
+            'categoryid' => $fieldcategory->get('id'), 'name' => 'Text', 'shortname' => 'text', 'type' => 'text', 'configdata' => [
+                'locked' => 1,
+            ],
+        ]);
+        $fieldtextarea = self::getDataGenerator()->create_custom_field([
+            'categoryid' => $fieldcategory->get('id'), 'name' => 'Textarea', 'shortname' => 'textarea', 'type' => 'textarea',
+        ]);
+
+        $originalcourse3 = self::getDataGenerator()->create_course();
         self::getDataGenerator()->enrol_user($USER->id, $originalcourse3->id, $roleid);
 
         // Course values to be updated.
@@ -1857,8 +1926,11 @@ class externallib_test extends externallib_advanced_testcase {
         $course2['forcetheme'] = 'classic';
 
         $course3['id'] = $originalcourse3->id;
-        $updatedcustomfieldvalue = ['shortname' => 'test', 'value' => 'Updated test value'];
-        $course3['customfields'] = [$updatedcustomfieldvalue];
+        $course3['customfields'] = [
+            ['shortname' => $fieldtext->get('shortname'), 'value' => 'I long to see the sunlight in your hair'],
+            ['shortname' => $fieldtextarea->get('shortname'), 'value' => 'And tell you time and time again'],
+         ];
+
         $courses = array($course1, $course2, $course3);
 
         $updatedcoursewarnings = core_course_external::update_courses($courses);
@@ -1899,7 +1971,10 @@ class externallib_test extends externallib_advanced_testcase {
                 }
 
                 $this->assertEquals($course2['enablecompletion'], $courseinfo->enablecompletion);
-                $this->assertEquals(['test' => null], (array)$customfields);
+                $this->assertEquals((object) [
+                    'text' => null,
+                    'textarea' => null,
+                ], $customfields);
             } else if ($course['id'] == $course1['id']) {
                 $this->assertEquals($course1['fullname'], $courseinfo->fullname);
                 $this->assertEquals($course1['shortname'], $courseinfo->shortname);
@@ -1909,9 +1984,15 @@ class externallib_test extends externallib_advanced_testcase {
                 $this->assertEquals(5, course_get_format($course['id'])->get_last_section_number());
                 $this->assertEquals(0, $courseinfo->newsitems);
                 $this->assertEquals(FORMAT_MOODLE, $courseinfo->summaryformat);
-                $this->assertEquals(['test' => null], (array)$customfields);
+                $this->assertEquals((object) [
+                    'text' => null,
+                    'textarea' => null,
+                ], $customfields);
             } else if ($course['id'] == $course3['id']) {
-                $this->assertEquals(['test' => $updatedcustomfieldvalue['value']], (array)$customfields);
+                $this->assertEquals((object) [
+                    'text' => 'I long to see the sunlight in your hair',
+                    'textarea' => '<div class="text_to_html">And tell you time and time again</div>',
+                ], $customfields);
             } else {
                 throw new moodle_exception('Unexpected shortname');
             }
@@ -2049,14 +2130,18 @@ class externallib_test extends externallib_advanced_testcase {
         $this->setUser($user);
         self::getDataGenerator()->enrol_user($user->id, $course3['id'], $roleid);
 
-        $newupdatedcustomfieldvalue = ['shortname' => 'test', 'value' => 'New updated value'];
-        $course3['customfields'] = [$newupdatedcustomfieldvalue];
+        $course3['customfields'] = [
+            ['shortname' => 'text', 'value' => 'New updated value'],
+        ];
 
         core_course_external::update_courses([$course3]);
 
         // Custom field was not updated.
         $customfields = \core_course\customfield\course_handler::create()->export_instance_data_object($course3['id']);
-        $this->assertEquals(['test' => $updatedcustomfieldvalue['value']], (array)$customfields);
+        $this->assertEquals((object) [
+            'text' => 'I long to see the sunlight in your hair',
+            'textarea' => '<div class="text_to_html">And tell you time and time again</div>',
+        ], $customfields);
     }
 
     /**
@@ -2617,7 +2702,7 @@ class externallib_test extends externallib_advanced_testcase {
             foreach ($course['options'] as $option) {
                 $navoptions->{$option['name']} = $option['available'];
             }
-            $this->assertCount(8, $course['options']);
+            $this->assertCount(9, $course['options']);
             if ($course['id'] == SITEID) {
                 $this->assertTrue($navoptions->blogs);
                 $this->assertFalse($navoptions->notes);
@@ -2627,6 +2712,7 @@ class externallib_test extends externallib_advanced_testcase {
                 $this->assertFalse($navoptions->grades);
                 $this->assertFalse($navoptions->search);
                 $this->assertTrue($navoptions->competencies);
+                $this->assertFalse($navoptions->communication);
             } else {
                 $this->assertTrue($navoptions->blogs);
                 $this->assertFalse($navoptions->notes);
@@ -2636,6 +2722,7 @@ class externallib_test extends externallib_advanced_testcase {
                 $this->assertTrue($navoptions->grades);
                 $this->assertFalse($navoptions->search);
                 $this->assertTrue($navoptions->competencies);
+                $this->assertFalse($navoptions->communication);
             }
         }
     }
@@ -3100,7 +3187,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test cases for the get_enrolled_courses_by_timeline_classification test.
      */
-    public function get_get_enrolled_courses_by_timeline_classification_test_cases():array {
+    public static function get_get_enrolled_courses_by_timeline_classification_test_cases(): array {
         $now = time();
         $day = 86400;
 
@@ -3362,16 +3449,6 @@ class externallib_test extends externallib_advanced_testcase {
                 'classification' => 'all',
                 'limit' => 5,
                 'offset' => 5,
-                'sort' => "ul.timeaccess abcdasc",
-                'expectedcourses' => [],
-                'expectednextoffset' => 0,
-                'expectedexception' => 'Invalid sort direction in $sort parameter in enrol_get_my_courses()',
-            ],
-            'all limit and offset with wrong sort direction' => [
-                'coursedata' => $coursedata,
-                'classification' => 'all',
-                'limit' => 5,
-                'offset' => 5,
                 'sort' => "ul.timeaccess.foo ascd",
                 'expectedcourses' => [],
                 'expectednextoffset' => 0,
@@ -3383,16 +3460,6 @@ class externallib_test extends externallib_advanced_testcase {
                 'limit' => 5,
                 'offset' => 5,
                 'sort' => "foobar",
-                'expectedcourses' => [],
-                'expectednextoffset' => 0,
-                'expectedexception' => 'Invalid $sort parameter in enrol_get_my_courses()',
-            ],
-            'all limit and offset with wrong field name' => [
-                'coursedata' => $coursedata,
-                'classification' => 'all',
-                'limit' => 5,
-                'offset' => 5,
-                'sort' => "ul.foobar",
                 'expectedcourses' => [],
                 'expectednextoffset' => 0,
                 'expectedexception' => 'Invalid $sort parameter in enrol_get_my_courses()',
@@ -3523,7 +3590,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test the get_enrolled_courses_by_timeline_classification function.
      *
-     * @dataProvider get_get_enrolled_courses_by_timeline_classification_test_cases()
+     * @dataProvider get_get_enrolled_courses_by_timeline_classification_test_cases
      * @param array $coursedata Courses to create
      * @param string $classification Timeline classification
      * @param int $limit Maximum number of results

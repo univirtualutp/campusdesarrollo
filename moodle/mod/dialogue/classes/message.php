@@ -133,7 +133,7 @@ class message implements \renderable {
             return true;
         }
         // Permission to delete conversation.
-        $candelete = ((has_capability('mod/dialogue:delete', $context) and $USER->id == $this->_authorid) or
+        $candelete = ((has_capability('mod/dialogue:delete', $context) && $USER->id == $this->_authorid) ||
             has_capability('mod/dialogue:deleteany', $context));
 
         if (!$candelete) {
@@ -326,7 +326,7 @@ class message implements \renderable {
         $this->_body = $body;
         $this->_bodyformat = $format;
 
-        if ($format == FORMAT_HTML and isset($itemid)) {
+        if ($format == FORMAT_HTML && isset($itemid)) {
             $this->_bodydraftid = $itemid;
             $this->_body = file_rewrite_urls_to_pluginfile($this->_body, $this->_bodydraftid);
         }
@@ -372,7 +372,7 @@ class message implements \renderable {
         global $DB, $USER;
 
         $admin = get_admin(); // Possible cronjob.
-        if ($USER->id != $admin->id and $USER->id != $this->_authorid) {
+        if ($USER->id != $admin->id && $USER->id != $this->_authorid) {
             throw new \moodle_exception("This doesn't belong to you!");
         }
 
@@ -450,16 +450,10 @@ class message implements \renderable {
         $context = $this->dialogue->context;
         $userfrom = $DB->get_record('user', array('id' => $this->_authorid), '*', MUST_EXIST);
         $subject = format_string($this->conversation->subject, true, array('context' => $context));
-
         $a = new \stdClass();
-        $a->userfrom = fullname($userfrom);
         $a->subject = $subject;
         $url = new \moodle_url('/mod/dialogue/view.php', array('id' => $cm->id));
         $a->url = $url->out(false);
-
-        $posthtml = get_string('messageapibasicmessage', 'dialogue', $a);
-        $posttext = html_to_text($posthtml);
-        $smallmessage = get_string('messageapismallmessage', 'dialogue', fullname($userfrom));
 
         $contexturlparams = array('id' => $cm->id, 'conversationid' => $conversationid);
         $contexturl = new \moodle_url('/mod/dialogue/conversation.php', $contexturlparams);
@@ -477,6 +471,14 @@ class message implements \renderable {
             $this->set_flag(dialogue::FLAG_SENT, $participant);
 
             $userto = $DB->get_record('user', array('id' => $participant->id), '*', MUST_EXIST);
+
+            $a->userfrom = dialogue_add_user_fullname($userfrom, $userto, $cm);
+            $a->course = $course->shortname;
+
+            $posthtml = get_string('messageapibasicmessage', 'dialogue', $a);
+            $posttext = html_to_text($posthtml);
+            $smallmessage = get_string('messageapismallmessage', 'dialogue',
+                dialogue_add_user_fullname($userfrom, $userto, $cm));
 
             $eventdata = new \core\message\message();
             $eventdata->courseid = $course->id;

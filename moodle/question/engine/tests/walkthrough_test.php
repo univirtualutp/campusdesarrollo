@@ -34,7 +34,7 @@ require_once(__DIR__ . '/helpers.php');
  * @copyright  2017 The Open University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class walkthrough_test extends \qbehaviour_walkthrough_test_base {
+final class walkthrough_test extends \qbehaviour_walkthrough_test_base {
 
     public function test_regrade_does_not_lose_flag() {
 
@@ -107,6 +107,7 @@ class walkthrough_test extends \qbehaviour_walkthrough_test_base {
         $displayoptions->userinfoinhistory = question_display_options::SHOW_ALL;
 
         $this->load_quba();
+        $this->quba->preload_all_step_users();
         $result = $this->quba->render_question($this->slot, $displayoptions);
         $numsteps = $this->quba->get_question_attempt($this->slot)->get_num_steps();
 
@@ -121,6 +122,13 @@ class walkthrough_test extends \qbehaviour_walkthrough_test_base {
 
         $this->load_quba();
         $result = $this->quba->render_question($this->slot, $displayoptions);
+        $message = 'Attempt to access the step user before it was initialised.';
+        $message .= ' Did you forget to call question_usage_by_activity::preload_all_step_users() or similar?';
+        $this->assertDebuggingCalled($message, DEBUG_DEVELOPER);
+        $this->resetDebugging();
+        $this->quba->preload_all_step_users();
+        $result = $this->quba->render_question($this->slot, $displayoptions);
+        $this->assertDebuggingNotCalled();
 
         // The step just show the user profile link if the step's userid is different with student id.
         preg_match_all("/<a ?.*>(.*)<\/a>/", $result, $matches);

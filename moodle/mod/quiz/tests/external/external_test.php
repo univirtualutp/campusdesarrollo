@@ -41,6 +41,7 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 
 require_once($CFG->dirroot . '/webservice/tests/helpers.php');
+require_once($CFG->dirroot . '/mod/quiz/tests/quiz_question_helper_test_trait.php');
 
 /**
  * Silly class to access mod_quiz_external internal methods.
@@ -84,7 +85,9 @@ class testable_mod_quiz_external extends mod_quiz_external {
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since      Moodle 3.1
  */
-class external_test extends externallib_advanced_testcase {
+final class external_test extends externallib_advanced_testcase {
+
+    use \quiz_question_helper_test_trait;
 
     /** @var \stdClass course record. */
     protected $course;
@@ -246,7 +249,7 @@ class external_test extends externallib_advanced_testcase {
                                 'timeopen', 'timeclose', 'grademethod', 'section', 'visible', 'groupmode', 'groupingid',
                                 'attempts', 'timelimit', 'grademethod', 'decimalpoints', 'questiondecimalpoints', 'sumgrades',
                                 'grade', 'preferredbehaviour', 'hasfeedback'];
-        $userswithaccessfields = ['attemptonlast', 'reviewattempt', 'reviewcorrectness', 'reviewmarks',
+        $userswithaccessfields = ['attemptonlast', 'reviewattempt', 'reviewcorrectness', 'reviewmaxmarks', 'reviewmarks',
                                         'reviewspecificfeedback', 'reviewgeneralfeedback', 'reviewrightanswer',
                                         'reviewoverallfeedback', 'questionsperpage', 'navmethod',
                                         'browsersecurity', 'delay1', 'delay2', 'showuserpicture', 'showblocks',
@@ -842,6 +845,87 @@ class external_test extends externallib_advanced_testcase {
         } catch (\dml_missing_record_exception $e) {
             $this->assertEquals('invaliduser', $e->errorcode);
         }
+    }
+
+    /**
+     * Test get_combined_review_options when the user has an override.
+     *
+     * @covers ::get_combined_review_options
+     * @covers ::get_combined_review_options_parameters
+     * @covers ::get_combined_review_options_returns
+     */
+    public function test_get_combined_review_options_with_overrides(): void {
+        global $DB;
+
+        // Create a closed quiz with review marks only when quiz is closed.
+        list($quiz, $context, $quizobj) = $this->create_quiz_with_questions(true, true, 'deferredfeedback', false, [
+            'timeclose' => time() - HOURSECS,
+            'marksduring' => 0,
+            'maxmarksduring' => 0,
+            'marksimmediately' => 0,
+            'maxmarksimmediately' => 0,
+            'marksopen' => 0,
+            'maxmarksopen' => 0,
+            'marksclosed' => 1,
+            'maxmarksclosed' => 1,
+        ]);
+
+        // Check that the student can see the marks because the quiz is closed.
+        $this->setUser($this->student);
+
+        $expected = [
+            "someoptions" => [
+                ["name" => "feedback", "value" => 1],
+                ["name" => "generalfeedback", "value" => 1],
+                ["name" => "rightanswer", "value" => 1],
+                ["name" => "overallfeedback", "value" => 1],
+                ["name" => "marks", "value" => 2],
+            ],
+            "alloptions" => [
+                ["name" => "feedback", "value" => 1],
+                ["name" => "generalfeedback", "value" => 1],
+                ["name" => "rightanswer", "value" => 1],
+                ["name" => "overallfeedback", "value" => 1],
+                ["name" => "marks", "value" => 2],
+            ],
+            "warnings" => [],
+        ];
+
+        $result = mod_quiz_external::get_combined_review_options($quiz->id);
+        $result = external_api::clean_returnvalue(mod_quiz_external::get_combined_review_options_returns(), $result);
+
+        $this->assertEquals($expected, $result);
+
+        // Add an override for the student to increase the close time.
+        $DB->insert_record('quiz_overrides', [
+            'quiz' => $quiz->id,
+            'userid' => $this->student->id,
+            'timeclose' => time() + HOURSECS,
+        ]);
+
+        // Check that now the marks option has changed.
+        $expected = [
+            "someoptions" => [
+                ["name" => "feedback", "value" => 1],
+                ["name" => "generalfeedback", "value" => 1],
+                ["name" => "rightanswer", "value" => 1],
+                ["name" => "overallfeedback", "value" => 1],
+                ["name" => "marks", "value" => 0],
+            ],
+            "alloptions" => [
+                ["name" => "feedback", "value" => 1],
+                ["name" => "generalfeedback", "value" => 1],
+                ["name" => "rightanswer", "value" => 1],
+                ["name" => "overallfeedback", "value" => 1],
+                ["name" => "marks", "value" => 0],
+            ],
+            "warnings" => [],
+        ];
+
+        $result = mod_quiz_external::get_combined_review_options($quiz->id);
+        $result = external_api::clean_returnvalue(mod_quiz_external::get_combined_review_options_returns(), $result);
+
+        $this->assertEquals($expected, $result);
     }
 
     /**
@@ -1623,7 +1707,7 @@ class external_test extends externallib_advanced_testcase {
         $this->assertEquals('gradedright', $result['questions'][0]['state']);
         $this->assertEquals(1, $result['questions'][0]['slot']);
 
-         $this->assertCount(1, $result['additionaldata']);
+        $this->assertCount(1, $result['additionaldata']);
         $this->assertEquals('feedback', $result['additionaldata'][0]['id']);
         $this->assertEquals('Feedback', $result['additionaldata'][0]['title']);
         $this->assertEquals('Feedback text 1', $result['additionaldata'][0]['content']);
@@ -1898,7 +1982,7 @@ class external_test extends externallib_advanced_testcase {
         $question = $questiongenerator->create_question('truefalse', null, ['category' => $cat->id]);
         $question = $questiongenerator->create_question('essay', null, ['category' => $cat->id]);
 
-        quiz_add_random_questions($quiz, 0, $cat->id, 1, false);
+        $this->add_random_questions($quiz->id, 0, $cat->id, 1);
 
         $quizobj = quiz_settings::create($quiz->id, $this->student->id);
 
@@ -2024,8 +2108,8 @@ class external_test extends externallib_advanced_testcase {
         $question = $questiongenerator->create_question('essay', null, ['category' => $anothercat->id]);
 
         // Add a couple of random questions from the same category.
-        quiz_add_random_questions($quiz, 0, $cat->id, 1, false);
-        quiz_add_random_questions($quiz, 0, $cat->id, 1, false);
+        $this->add_random_questions($quiz->id, 0, $cat->id, 1);
+        $this->add_random_questions($quiz->id, 0, $cat->id, 1);
 
         $this->setUser($this->student);
 
@@ -2039,7 +2123,7 @@ class external_test extends externallib_advanced_testcase {
 
         // Add more questions to the quiz, this time from the other category.
         $this->setAdminUser();
-        quiz_add_random_questions($quiz, 0, $anothercat->id, 1, false);
+        $this->add_random_questions($quiz->id, 0, $anothercat->id, 1);
 
         $this->setUser($this->student);
         $result = mod_quiz_external::get_quiz_required_qtypes($quiz->id);

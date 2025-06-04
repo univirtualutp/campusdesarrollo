@@ -91,6 +91,7 @@ class data_request extends persistent {
                 'default' => api::DATAREQUEST_STATUS_AWAITING_APPROVAL,
                 'choices' => [
                     api::DATAREQUEST_STATUS_PENDING,
+                    api::DATAREQUEST_STATUS_PREPROCESSING,
                     api::DATAREQUEST_STATUS_AWAITING_APPROVAL,
                     api::DATAREQUEST_STATUS_APPROVED,
                     api::DATAREQUEST_STATUS_PROCESSING,
@@ -155,9 +156,9 @@ class data_request extends persistent {
                 case api::DATAREQUEST_STATUS_EXPIRED:
                     $result = true;
                     break;
-                // Complete requests are expired if the expiry time has elapsed.
+                // Complete requests are expired if the expiry time is a positive value, and has elapsed.
                 case api::DATAREQUEST_STATUS_DOWNLOAD_READY:
-                    $expiryseconds = get_config('tool_dataprivacy', 'privacyrequestexpiry');
+                    $expiryseconds = (int) get_config('tool_dataprivacy', 'privacyrequestexpiry');
                     if ($expiryseconds > 0 && time() >= ($request->get('timemodified') + $expiryseconds)) {
                         $result = true;
                     }
@@ -178,7 +179,12 @@ class data_request extends persistent {
     public static function get_expired_requests($userid = 0) {
         global $DB;
 
-        $expiryseconds = get_config('tool_dataprivacy', 'privacyrequestexpiry');
+        // Complete requests are expired if the expiry time is a positive value, and has elapsed.
+        $expiryseconds = (int) get_config('tool_dataprivacy', 'privacyrequestexpiry');
+        if ($expiryseconds <= 0) {
+            return [];
+        }
+
         $expirytime = strtotime("-{$expiryseconds} second");
         $table = self::TABLE;
         $sqlwhere = 'type = :export_type AND status = :completestatus AND timemodified <= :expirytime';

@@ -256,7 +256,7 @@ if (!isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['argv'][0])) {
 
 // sometimes default PHP settings are borked on shared hosting servers, I wonder why they have to do that??
 ini_set('precision', 14); // needed for upgrades and gradebook
-ini_set('serialize_precision', 17); // Make float serialization consistent on all systems.
+ini_set('serialize_precision', -1); // Make float serialization consistent on all systems.
 
 // Scripts may request no debug and error messages in output
 // please note it must be defined before including the config.php script
@@ -281,21 +281,25 @@ if (!defined('PHPUNIT_TEST')) {
     define('PHPUNIT_TEST', false);
 }
 
-// Performance tests needs to always display performance info, even in redirections.
+// Performance tests needs to always display performance info, even in redirections;
+// MDL_PERF_TEST is used in https://github.com/moodlehq/moodle-performance-comparison scripts.
 if (!defined('MDL_PERF_TEST')) {
     define('MDL_PERF_TEST', false);
-} else {
-    // We force the ones we need.
-    if (!defined('MDL_PERF')) {
-        define('MDL_PERF', true);
-    }
-    if (!defined('MDL_PERFDB')) {
-        define('MDL_PERFDB', true);
-    }
-    if (!defined('MDL_PERFTOFOOT')) {
-        define('MDL_PERFTOFOOT', true);
-    }
 }
+// Make sure all MDL_PERF* constants are always defined.
+if (!defined('MDL_PERF')) {
+    define('MDL_PERF', MDL_PERF_TEST);
+}
+if (!defined('MDL_PERFTOFOOT')) {
+    define('MDL_PERFTOFOOT', MDL_PERF_TEST);
+}
+if (!defined('MDL_PERFTOLOG')) {
+    define('MDL_PERFTOLOG', false);
+}
+if (!defined('MDL_PERFINC')) {
+    define('MDL_PERFINC', false);
+}
+// Note that PHPUnit and Behat tests should pass with both MDL_PERF true and false.
 
 // When set to true MUC (Moodle caching) will be disabled as much as possible.
 // A special cache factory will be used to handle this situation and will use special "disabled" equivalents objects.
@@ -391,7 +395,6 @@ $CFG->yui2version = '2.9.0';
 $CFG->yui3version = '3.18.1';
 
 // Patching the upstream YUI release.
-// For important information on patching YUI modules, please see http://docs.moodle.org/dev/YUI/Patching.
 // If we need to patch a YUI modules between official YUI releases, the yuipatchlevel will need to be manually
 // incremented here. The module will also need to be listed in the yuipatchedmodules.
 // When upgrading to a subsequent version of YUI, these should be reset back to 0 and an empty array.
@@ -612,12 +615,8 @@ if (!empty($_SERVER['HTTP_X_moz']) && $_SERVER['HTTP_X_moz'] === 'prefetch'){
 //the problem is that we need specific version of quickforms and hacked excel files :-(
 ini_set('include_path', $CFG->libdir.'/pear' . PATH_SEPARATOR . ini_get('include_path'));
 
-// Register our classloader, in theory somebody might want to replace it to load other hacked core classes.
-if (defined('COMPONENT_CLASSLOADER')) {
-    spl_autoload_register(COMPONENT_CLASSLOADER);
-} else {
-    spl_autoload_register('core_component::classloader');
-}
+// Register our classloader.
+\core_component::register_autoloader();
 
 // Remember the default PHP timezone, we will need it later.
 core_date::store_default_php_timezone();
@@ -672,19 +671,29 @@ if (PHPUNIT_TEST and !PHPUNIT_UTIL) {
 }
 
 // Load any immutable bootstrap config from local cache.
-$bootstrapcachefile = $CFG->localcachedir . '/bootstrap.php';
-if (is_readable($bootstrapcachefile)) {
+$bootstraplocalfile = $CFG->localcachedir . '/bootstrap.php';
+$bootstrapsharedfile = $CFG->cachedir . '/bootstrap.php';
+
+if (!is_readable($bootstraplocalfile) && is_readable($bootstrapsharedfile)) {
+    // If we don't have a local cache but do have a shared cache then clone it,
+    // for example when scaling up new front ends.
+    make_localcache_directory('', true);
+    copy($bootstrapsharedfile, $bootstraplocalfile);
+}
+if (is_readable($bootstraplocalfile)) {
     try {
-        require_once($bootstrapcachefile);
+        require_once($bootstraplocalfile);
         // Verify the file is not stale.
         if (!isset($CFG->bootstraphash) || $CFG->bootstraphash !== hash_local_config_cache()) {
             // Something has changed, the bootstrap.php file is stale.
             unset($CFG->siteidentifier);
-            @unlink($bootstrapcachefile);
+            @unlink($bootstraplocalfile);
+            @unlink($bootstrapsharedfile);
         }
     } catch (Throwable $e) {
         // If it is corrupted then attempt to delete it and it will be rebuilt.
-        @unlink($bootstrapcachefile);
+        @unlink($bootstraplocalfile);
+        @unlink($bootstrapsharedfile);
     }
 }
 

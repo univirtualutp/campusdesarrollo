@@ -26,7 +26,7 @@ use core_customfield_test_instance_form;
  * @copyright  2019 Marina Glancy
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class plugin_test extends \advanced_testcase {
+final class plugin_test extends \advanced_testcase {
 
     /** @var stdClass[]  */
     private $courses = [];
@@ -47,7 +47,7 @@ class plugin_test extends \advanced_testcase {
 
         $this->cfields[1] = $this->get_generator()->create_field(
             ['categoryid' => $this->cfcat->get('id'), 'shortname' => 'myfield1', 'type' => 'text',
-                'configdata' => ['maxlength' => 30, 'displaysize' => 50]]);
+                'configdata' => ['maxlength' => 30, 'displaysize' => 50], 'description' => null]);
         $this->cfields[2] = $this->get_generator()->create_field(
             ['categoryid' => $this->cfcat->get('id'), 'shortname' => 'myfield2', 'type' => 'text',
                 'configdata' => ['required' => 1, 'maxlength' => 30, 'displaysize' => 50]]);

@@ -31,7 +31,7 @@ defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
-
+require_once($CFG->dirroot . '/mod/quiz/tests/quiz_question_helper_test_trait.php');
 
 /**
  * Unit tests for (some of) mod/quiz/locallib.php.
@@ -39,7 +39,9 @@ require_once($CFG->dirroot . '/mod/quiz/locallib.php');
  * @copyright  2008 Tim Hunt
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class locallib_test extends \advanced_testcase {
+final class locallib_test extends \advanced_testcase {
+
+    use \quiz_question_helper_test_trait;
 
     public function test_quiz_rescale_grade() {
         $quiz = new \stdClass();
@@ -58,7 +60,7 @@ class locallib_test extends \advanced_testcase {
             format_float(0.247, 3));
     }
 
-    public function quiz_attempt_state_data_provider() {
+    public static function quiz_attempt_state_data_provider(): array {
         return [
             [quiz_attempt::IN_PROGRESS, null, null, display_options::DURING],
             [quiz_attempt::FINISHED, -90, null, display_options::IMMEDIATELY_AFTER],
@@ -523,7 +525,7 @@ class locallib_test extends \advanced_testcase {
                     $tagids[] = $tagobjects[$tagname]->id;
                 }
             }
-            quiz_add_random_questions($quiz, 0, $cat->id, 1, false, $tagids);
+            $this->add_random_questions($quiz->id, 0, $cat->id, 1);
         }
 
         return [$quiz, $tagobjects];

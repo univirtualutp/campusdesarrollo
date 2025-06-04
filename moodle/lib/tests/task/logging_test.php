@@ -36,7 +36,7 @@ require_once(__DIR__ . '/../fixtures/task_fixtures.php');
  * @copyright 2018 Andrew Nicols <andrew@nicols.co.uk>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class logging_test extends \advanced_testcase {
+final class logging_test extends \advanced_testcase {
 
     /**
      * @var \moodle_database The original database prior to mocking
@@ -485,7 +485,7 @@ class logging_test extends \advanced_testcase {
 
         // Note PHPUnit does not support mocking static functions.
         $CFG->task_log_class = logging_test_mocked_logger::class;
-        logging_test_mocked_logger::test_reset();
+        logging_test_mocked_logger::reset_test();
 
         return $CFG->task_log_class;
     }
@@ -533,7 +533,7 @@ class logging_test_mocked_logger implements task_logger {
     /**
      * Reset the test class.
      */
-    public static function test_reset() {
+    public static function reset_test() {
         self::$isconfigured = true;
         self::$storelogfortask = [];
         self::$haslogreport = true;

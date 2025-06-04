@@ -35,7 +35,7 @@ require_once($CFG->dirroot . '/webservice/lib.php');
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since       Moodle 3.1
  */
-class externallib_test extends externallib_advanced_testcase {
+final class externallib_test extends externallib_advanced_testcase {
 
     /**
      * Test get_plugins_supporting_mobile.
@@ -230,6 +230,8 @@ class externallib_test extends externallib_advanced_testcase {
             array('name' => 'tool_mobile_custommenuitems', 'value' => ''),
             array('name' => 'tool_mobile_apppolicy', 'value' => ''),
             array('name' => 'tool_mobile_autologinmintimebetweenreq', 'value' => 6 * MINSECS),
+            array('name' => 'tool_mobile_autologout', 'value' => get_config('tool_mobile', 'autologout')),
+            array('name' => 'tool_mobile_autologouttime', 'value' => get_config('tool_mobile', 'autologouttime')),
             array('name' => 'calendartype', 'value' => $CFG->calendartype),
             array('name' => 'calendar_site_timeformat', 'value' => $CFG->calendar_site_timeformat),
             array('name' => 'calendar_startwday', 'value' => $CFG->calendar_startwday),
@@ -257,6 +259,26 @@ class externallib_test extends externallib_advanced_testcase {
         $expected[] = ['name' => 'timezone', 'value' => $CFG->timezone];
         $expected[] = ['name' => 'forcetimezone', 'value' => $CFG->forcetimezone];
 
+        $expected[] = ['name' => 'searchengine', 'value' => $CFG->searchengine];
+        $expected[] = ['name' => 'searchenablecategories', 'value' => $CFG->searchenablecategories];
+        $expected[] = ['name' => 'searchdefaultcategory', 'value' => $CFG->searchdefaultcategory];
+        $expected[] = ['name' => 'searchhideallcategory', 'value' => $CFG->searchhideallcategory];
+        $expected[] = ['name' => 'searchmaxtopresults', 'value' => $CFG->searchmaxtopresults];
+        $expected[] = ['name' => 'searchbannerenable', 'value' => $CFG->searchbannerenable];
+        $expected[] = ['name' => 'searchbanner', 'value' => $CFG->searchbanner];
+
+        $this->assertCount(0, $result['warnings']);
+        $this->assertEquals($expected, $result['settings']);
+
+        // H5P custom CSS.
+        set_config('h5pcustomcss', '.debug { color: #fab; }', 'core_h5p');
+        \core_h5p\local\library\autoloader::register();
+        \core_h5p\file_storage::generate_custom_styles();
+        $result = external::get_config();
+        $result = external_api::clean_returnvalue(external::get_config_returns(), $result);
+
+        $customcss = \core_h5p\file_storage::get_custom_styles();
+        $expected[] = ['name' => 'h5pcustomcssurl', 'value' => $customcss['cssurl']->out() . '?ver=' . $customcss['cssversion']];
         $this->assertCount(0, $result['warnings']);
         $this->assertEquals($expected, $result['settings']);
 
@@ -404,18 +426,18 @@ class externallib_test extends externallib_advanced_testcase {
         $result = external::get_autologin_key($token->privatetoken);
         $result = external_api::clean_returnvalue(external::get_autologin_key_returns(), $result);
 
-        // Change min time between requests to 30 seconds.
-        set_config('autologinmintimebetweenreq', 30, 'tool_mobile');
+        // Change min time between requests to 3 minutes.
+        set_config('autologinmintimebetweenreq', 3 * MINSECS, 'tool_mobile');
 
-        // Mock a previous request, 60 seconds ago.
-        $mocktime = time() - MINSECS;
+        // Mock a previous request, 4 minutes ago.
+        $mocktime = time() - (4 * MINSECS);
         set_user_preference('tool_mobile_autologin_request_last', $mocktime, $USER);
-        $result = external::get_autologin_key($token->privatetoken);    // All good, we were expecint 30 seconds or more.
+        $result = external::get_autologin_key($token->privatetoken);
         $result = external_api::clean_returnvalue(external::get_autologin_key_returns(), $result);
 
         // We just requested one token, we must wait.
         $this->expectException('moodle_exception');
-        $this->expectExceptionMessage(get_string('autologinkeygenerationlockout', 'tool_mobile'));
+        $this->expectExceptionMessage(get_string('autologinkeygenerationlockout', 'tool_mobile', 3));
         $result = external::get_autologin_key($token->privatetoken);
     }
 

@@ -23,7 +23,7 @@
 
 // Plugin Name.
 $string['pluginname'] = 'Edwiser course formats';
-
+$string['plugin_description'] = 'Courses are presented as collapsible lists OR as cards of sections with a responsive design for better navigation.';
 // Settings.
 $string['defaultcoursedisplay'] = 'Course display default';
 $string['defaultcoursedisplay_desc'] = "Either show all the sections on a single page or section zero and the chosen section on page.";
@@ -186,3 +186,7 @@ $string['headereditingbutton_help'] = "Select editing button positon This settin
 
 $string['headeroverlayopacity'] = "Change the header overlay opacity";
 $string['headeroverlayopacity_help'] = "The default value is already set to '100'. To adjust opacity, please enter a value between 0 and 100";
+$string['viewalltext'] = 'View all';
+$string['editmodeinfo'] = "While editing, the course switches to Moodle's format for easier editing. It will return to the Edwiser Course format when you turn off Edit Mode";
+$string['okay'] = 'Okay';
+$string['donotshowagain'] = "Don't show again";

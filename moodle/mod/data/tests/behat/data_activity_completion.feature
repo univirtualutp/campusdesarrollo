@@ -27,18 +27,19 @@ Feature: View activity completion in the database activity
     Given I am on the "Music history" "data activity editing" page logged in as teacher1
     And I expand all fieldsets
     And I set the following fields to these values:
-      | Aggregate type           | Average of ratings                                |
-      | scale[modgrade_type]     | Point                                             |
-      | scale[modgrade_point]    | 100                                               |
-      | Completion tracking      | Show activity as complete when conditions are met |
-      | Require view             | 1                                                 |
-      | Require grade            | 1                                                 |
+      | Aggregate type           | Average of ratings |
+      | scale[modgrade_type]     | Point              |
+      | scale[modgrade_point]    | 100                |
+      | Add requirements         | 1                  |
+      | View the activity        | 1                  |
+      | Receive a grade          | 1                  |
+      | Any grade                | 1                  |
     And I press "Save and display"
     And I add a "Short text" field to "Music history" database and I fill the form with:
       | Field name | Instrument types |
     And I log out
 
-  Scenario: View automatic completion items as a teacher
+  Scenario: Database activity displays completion conditions to teachers
     Given I am on the "Music history" "data activity" page logged in as teacher1
 #   We add an entry to let the user change to a different view.
     When I add an entry to "Music history" database with:
@@ -52,7 +53,7 @@ Feature: View activity completion in the database activity
     And "Music history" should have the "Make entries: 2" completion condition
     And "Music history" should have the "Receive a grade" completion condition
 
-  Scenario: View automatic completion items as a student
+  Scenario: A student can complete an database activity by achieving a passing grade
     Given I am on the "Music history" "data activity" page logged in as student1
     And the "View" completion condition of "Music history" is displayed as "done"
     And the "Make entries: 2" completion condition of "Music history" is displayed as "todo"
@@ -88,10 +89,10 @@ Feature: View activity completion in the database activity
     And "Vinnie Student1" user has completed "Music history" activity
 
   @javascript
-  Scenario: Use manual completion
+  Scenario: A student can manually mark the data activity as done but a teacher cannot
     Given I am on the "Music history" "data activity editing" page logged in as teacher1
     And I expand all fieldsets
-    And I set the field "Completion tracking" to "Students can manually mark the activity as completed"
+    And I set the field "Students must manually mark the activity as done" to "1"
     And I press "Save and display"
     # Teacher view.
     And the manual completion button for "Music history" should be disabled

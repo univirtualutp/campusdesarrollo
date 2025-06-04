@@ -68,7 +68,7 @@
 {{/addsection}}
 
 {{^addsection}}
-<li id="section-{{{index}}}" class="section main clearfix"
+<li id="section-{{{index}}}" class="section main clearfix {{#isdelegatedsection}}delegated-section {{/isdelegatedsection}}"
     aria-labelledby="section-{{{index}}} .content .sectionname"
     data-sectionid="{{id}}"
     data-sectionreturnid="{{sectionreturnid}}"
@@ -96,11 +96,10 @@
             {{#addnewsection}}
                 <h2 class="sectionname m-0 d-flex flex-column bg-transparent text-clamp text-clamp-3" style="-webkit-box-orient: vertical;">{{{ title }}}
                 </h2>
-                {{#hiddenfromstudents}}
                 <div data-region="sectionbadges" class="sectionbadges d-inline">
-                    {{> core_courseformat/local/content/section/badges }}
+                    {{!> core_courseformat/local/content/section/badges }}
+                    {{>format_remuiformat/edwbadges}}
                 </div>
-                {{/hiddenfromstudents}}
             {{/addnewsection}}
             {{^addnewsection}}
                 <div class="section-header d-inline">
@@ -142,7 +141,7 @@
                         role="progressbar">
                     </div>
                 </div>
-                <div class="text-right progress-text  w-100">
+                <div class="erf-text-right progress-text  w-100">
                     {{! progress }}
                     <span>{{#progressinfo}}{{{percentage}}}{{/progressinfo}}{{^progressinfo}}0{{/progressinfo}}% {{#str}} Complete, format_remuiformat {{/str}}
                     </span>

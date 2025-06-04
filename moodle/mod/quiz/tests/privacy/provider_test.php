@@ -41,8 +41,9 @@ require_once($CFG->dirroot . '/question/tests/privacy_helper.php');
  * @package    mod_quiz
  * @copyright  2018 Andrew Nicols <andrew@nicols.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers \mod_quiz\privacy\provider
  */
-class provider_test extends \core_privacy\tests\provider_testcase {
+final class provider_test extends \core_privacy\tests\provider_testcase {
 
     use \core_question_privacy_helper;
 

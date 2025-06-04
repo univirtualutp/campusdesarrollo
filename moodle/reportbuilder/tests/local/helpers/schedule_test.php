@@ -225,6 +225,15 @@ class schedule_test extends advanced_testcase {
             'Henrietta',
             'Zoe',
         ], array_column($users, 'firstname'));
+
+        // Now delete one of our users, ensure they are no longer returned.
+        delete_user($manualuserone);
+
+        $users = schedule::get_schedule_report_users($schedule);
+        $this->assertEquals([
+            'Henrietta',
+            'Zoe',
+        ], array_column($users, 'firstname'));
     }
 
     /**
@@ -248,7 +257,7 @@ class schedule_test extends advanced_testcase {
      *
      * @return string[]
      */
-    public function get_schedule_report_file_format(): array {
+    public static function get_schedule_report_file_format(): array {
         return [
             ['csv'],
             ['excel'],

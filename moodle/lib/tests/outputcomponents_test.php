@@ -140,9 +140,6 @@ class outputcomponents_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        // Force SVG on so that we have predictable URL's.
-        $CFG->svgicons = true;
-
         // Verify new install contains expected defaults.
         $this->assertSame(theme_config::DEFAULT_THEME, $CFG->theme);
         $this->assertEquals(1, $CFG->slasharguments);
@@ -758,7 +755,7 @@ EOF;
      *
      * @return array
      */
-    public function block_contents_is_fake_provider() {
+    public static function block_contents_is_fake_provider(): array {
         return [
             'Null' => [null, false],
             'Not set' => [false, false],

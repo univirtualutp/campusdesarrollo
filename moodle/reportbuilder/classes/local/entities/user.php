@@ -144,18 +144,7 @@ class user extends base {
      * @return string[]
      */
     public function get_tag_joins(): array {
-        $user = $this->get_table_alias('user');
-        $taginstance = $this->get_table_alias('tag_instance');
-        $tag = $this->get_table_alias('tag');
-
-        return [
-            "LEFT JOIN {tag_instance} {$taginstance}
-                    ON {$taginstance}.component = 'core'
-                   AND {$taginstance}.itemtype = 'user'
-                   AND {$taginstance}.itemid = {$user}.id",
-            "LEFT JOIN {tag} {$tag}
-                    ON {$tag}.id = {$taginstance}.tagid",
-        ];
+        return $this->get_tag_joins_for_entity('core', 'user', $this->get_table_alias('user') . '.id');
     }
 
     /**
@@ -383,7 +372,8 @@ class user extends base {
 
         // Create a dummy user object containing all name fields.
         $dummyuser = (object) array_combine($namefields, $namefields);
-        $dummyfullname = fullname($dummyuser, true);
+        $viewfullnames = has_capability('moodle/site:viewfullnames', context_system::instance());
+        $dummyfullname = fullname($dummyuser, $viewfullnames);
 
         // Extract any name fields from the fullname format in the order that they appear.
         $matchednames = array_values(order_in_string($namefields, $dummyfullname));

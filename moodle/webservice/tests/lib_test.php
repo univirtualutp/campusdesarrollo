@@ -43,7 +43,7 @@ require_once($CFG->dirroot . '/webservice/lib.php');
  * @copyright  2016 Jun Pataleta <jun@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class lib_test extends \advanced_testcase {
+final class lib_test extends \advanced_testcase {
 
     /**
      * Setup.
@@ -87,6 +87,7 @@ class lib_test extends \advanced_testcase {
         $externaltoken->contextid = 1;
         $externaltoken->creatorid = $USER->id;
         $externaltoken->timecreated = time();
+        $externaltoken->name = \core_external\util::generate_token_name();
         $DB->insert_record('external_tokens', $externaltoken);
 
         // Add a function to the service.
@@ -268,7 +269,7 @@ class lib_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function get_active_tokens_provider(): array {
+    public static function get_active_tokens_provider(): array {
         return [
             'No expiration' => [0, true],
             'Active' => [time() + DAYSECS, true],

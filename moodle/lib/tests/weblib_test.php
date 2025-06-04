@@ -23,7 +23,7 @@
  * @author     T.J.Hunt@open.ac.uk
  * @license    http://www.gnu.org/copyleft/gpl.html GNU Public License
  */
-class weblib_test extends advanced_testcase {
+final class weblib_test extends advanced_testcase {
     /**
      * @covers ::format_string
      */
@@ -169,6 +169,113 @@ class weblib_test extends advanced_testcase {
     }
 
     /**
+     * Test the format_string illegal options handling.
+     *
+     * @covers ::format_string
+     * @dataProvider format_string_illegal_options_provider
+     */
+    public function test_format_string_illegal_options(
+        string $input,
+        string $result,
+        mixed $options,
+        string $pattern,
+    ): void {
+        $this->assertEquals(
+            $result,
+            format_string($input, false, $options),
+        );
+
+        $messages = $this->getDebuggingMessages();
+        $this->assertdebuggingcalledcount(1);
+        $this->assertMatchesRegularExpression(
+            "/{$pattern}/",
+            $messages[0]->message,
+        );
+    }
+
+    /**
+     * Data provider for test_format_string_illegal_options.
+     * @return array
+     */
+    public static function format_string_illegal_options_provider(): array {
+        return [
+            [
+                'Example',
+                'Example',
+                \core\context\system::instance(),
+                preg_quote('The options argument should not be a context object directly.'),
+            ],
+            [
+                'Example',
+                'Example',
+                true,
+                preg_quote('The options argument should be an Array, or stdclass. boolean passed.'),
+            ],
+            [
+                'Example',
+                'Example',
+                false,
+                preg_quote('The options argument should be an Array, or stdclass. boolean passed.'),
+            ],
+        ];
+    }
+
+    /**
+     * Ensure that if format_string is called with a context as the third param, that a debugging notice is emitted.
+     *
+     * @covers ::format_string
+     */
+    public function test_format_string_context(): void {
+        global $CFG;
+
+        $this->resetAfterTest(true);
+
+        // Disable the formatstringstriptags option to ensure that the HTML tags are not stripped.
+        $CFG->stringfilters = 'multilang';
+
+        // Enable filters.
+        $CFG->filterall = true;
+
+        $course = $this->getDataGenerator()->create_course();
+        $coursecontext = \core\context\course::instance($course->id);
+
+        // Set up the multilang filter at the system context, but disable it at the course.
+        filter_set_global_state('multilang', TEXTFILTER_ON);
+        filter_set_local_state('multilang', $coursecontext->id, TEXTFILTER_OFF);
+
+        // Previously, if a context was passed, it was converted into an Array, and ignored.
+        // The PAGE context was used instead -- often this is the system context.
+        $input = 'I really <span lang="en" class="multilang">do not </span><span lang="de" class="multilang">do not </span>like this!';
+
+        $result = format_string(
+            $input,
+            true,
+            $coursecontext,
+        );
+
+        // We emit a debugging notice to alert that the context has been moved to the options.
+        $this->assertdebuggingcalledcount(1);
+
+        // Check the result was _not_ filtered.
+        $this->assertEquals(
+            // Tags are stripped out due to striptags.
+            "I really do not do not like this!",
+            $result,
+        );
+
+        // But it should be filtered if called with the system context.
+        $result = format_string(
+            $input,
+            true,
+            ['context' => \core\context\system::instance()],
+        );
+        $this->assertEquals(
+            'I really do not like this!',
+            $result,
+        );
+    }
+
+    /**
      * @covers ::format_text_email
      */
     public function test_format_text_email() {
@@ -278,6 +385,204 @@ class weblib_test extends advanced_testcase {
         $this->assertSame('lala xx', clean_text($text, FORMAT_MARKDOWN));
         $this->assertSame('lala xx', clean_text($text, FORMAT_MOODLE));
         $this->assertSame('lala xx', clean_text($text, FORMAT_HTML));
+    }
+
+    /**
+     * Test trusttext enabling.
+     *
+     * @covers ::trusttext_active
+     */
+    public function test_trusttext_active() {
+        global $CFG;
+        $this->resetAfterTest();
+
+        $this->assertFalse(trusttext_active());
+        $CFG->enabletrusttext = '1';
+        $this->assertTrue(trusttext_active());
+    }
+
+    /**
+     * Test trusttext detection.
+     *
+     * @covers ::trusttext_trusted
+     */
+    public function test_trusttext_trusted() {
+        global $CFG;
+        $this->resetAfterTest();
+
+        $syscontext = context_system::instance();
+        $course = $this->getDataGenerator()->create_course();
+        $coursecontext = context_course::instance($course->id);
+        $user1 = $this->getDataGenerator()->create_user();
+        $user2 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user2->id, $course->id, 'editingteacher');
+
+        $this->setAdminUser();
+
+        $CFG->enabletrusttext = '0';
+        $this->assertFalse(trusttext_trusted($syscontext));
+        $this->assertFalse(trusttext_trusted($coursecontext));
+
+        $CFG->enabletrusttext = '1';
+        $this->assertTrue(trusttext_trusted($syscontext));
+        $this->assertTrue(trusttext_trusted($coursecontext));
+
+        $this->setUser($user1);
+
+        $CFG->enabletrusttext = '0';
+        $this->assertFalse(trusttext_trusted($syscontext));
+        $this->assertFalse(trusttext_trusted($coursecontext));
+
+        $CFG->enabletrusttext = '1';
+        $this->assertFalse(trusttext_trusted($syscontext));
+        $this->assertFalse(trusttext_trusted($coursecontext));
+
+        $this->setUser($user2);
+
+        $CFG->enabletrusttext = '0';
+        $this->assertFalse(trusttext_trusted($syscontext));
+        $this->assertFalse(trusttext_trusted($coursecontext));
+
+        $CFG->enabletrusttext = '1';
+        $this->assertFalse(trusttext_trusted($syscontext));
+        $this->assertTrue(trusttext_trusted($coursecontext));
+    }
+
+    /**
+     * Data provider for trusttext_pre_edit() tests.
+     */
+    public static function trusttext_pre_edit_provider(): array {
+        return [
+            [true, 0, 'editingteacher', FORMAT_HTML, 1],
+            [true, 0, 'editingteacher', FORMAT_MOODLE, 1],
+            [false, 0, 'editingteacher', FORMAT_MARKDOWN, 1],
+            [false, 0, 'editingteacher', FORMAT_PLAIN, 1],
+
+            [false, 1, 'editingteacher', FORMAT_HTML, 1],
+            [false, 1, 'editingteacher', FORMAT_MOODLE, 1],
+            [false, 1, 'editingteacher', FORMAT_MARKDOWN, 1],
+            [false, 1, 'editingteacher', FORMAT_PLAIN, 1],
+
+            [true, 0, 'student', FORMAT_HTML, 1],
+            [true, 0, 'student', FORMAT_MOODLE, 1],
+            [false, 0, 'student', FORMAT_MARKDOWN, 1],
+            [false, 0, 'student', FORMAT_PLAIN, 1],
+
+            [true, 1, 'student', FORMAT_HTML, 1],
+            [true, 1, 'student', FORMAT_MOODLE, 1],
+            [false, 1, 'student', FORMAT_MARKDOWN, 1],
+            [false, 1, 'student', FORMAT_PLAIN, 1],
+        ];
+    }
+
+    /**
+     * Test text cleaning before editing.
+     *
+     * @dataProvider trusttext_pre_edit_provider
+     * @covers ::trusttext_pre_edit
+     *
+     * @param bool $expectedsanitised
+     * @param int $enabled
+     * @param string $rolename
+     * @param string $format
+     * @param int $trust
+     */
+    public function test_trusttext_pre_edit(bool $expectedsanitised, int $enabled, string $rolename,
+                                            string $format, int $trust) {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+
+        $exploit = "abc<script>alert('xss')</script> < > &";
+        $sanitised = purify_html($exploit);
+
+        $course = $this->getDataGenerator()->create_course();
+        $context = context_course::instance($course->id);
+
+        $user = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, $rolename);
+
+        $this->setUser($user);
+
+        $CFG->enabletrusttext = (string)$enabled;
+
+        $object = new stdClass();
+        $object->some = $exploit;
+        $object->someformat = $format;
+        $object->sometrust = (string)$trust;
+        $result = trusttext_pre_edit(clone($object), 'some', $context);
+
+        if ($expectedsanitised) {
+            $message = "sanitisation is expected for: $enabled, $rolename, $format, $trust";
+            $this->assertSame($sanitised, $result->some, $message);
+        } else {
+            $message = "sanitisation is not expected for: $enabled, $rolename, $format, $trust";
+            $this->assertSame($exploit, $result->some, $message);
+        }
+    }
+
+    /**
+     * Test removal of legacy trusttext flag.
+     * @covers ::trusttext_strip
+     */
+    public function test_trusttext_strip() {
+        $this->assertSame('abc', trusttext_strip('abc'));
+        $this->assertSame('abc', trusttext_strip('ab#####TRUSTTEXT#####c'));
+    }
+
+    /**
+     * Test trust option of format_text().
+     * @covers ::format_text
+     */
+    public function test_format_text_trusted() {
+        global $CFG;
+        $this->resetAfterTest();
+
+        $text = "lala <object>xx</object>";
+
+        $CFG->enabletrusttext = 0;
+
+        $this->assertSame(s($text),
+            format_text($text, FORMAT_PLAIN, ['trusted' => true]));
+        $this->assertSame("<p>lala xx</p>\n",
+            format_text($text, FORMAT_MARKDOWN, ['trusted' => true]));
+        $this->assertSame('<div class="text_to_html">lala xx</div>',
+            format_text($text, FORMAT_MOODLE, ['trusted' => true]));
+        $this->assertSame('lala xx',
+            format_text($text, FORMAT_HTML, ['trusted' => true]));
+
+        $this->assertSame(s($text),
+            format_text($text, FORMAT_PLAIN, ['trusted' => false]));
+        $this->assertSame("<p>lala xx</p>\n",
+            format_text($text, FORMAT_MARKDOWN, ['trusted' => false]));
+        $this->assertSame('<div class="text_to_html">lala xx</div>',
+            format_text($text, FORMAT_MOODLE, ['trusted' => false]));
+        $this->assertSame('lala xx',
+            format_text($text, FORMAT_HTML, ['trusted' => false]));
+
+        $CFG->enabletrusttext = 1;
+
+        $this->assertSame(s($text),
+            format_text($text, FORMAT_PLAIN, ['trusted' => true]));
+        $this->assertSame("<p>lala xx</p>\n",
+            format_text($text, FORMAT_MARKDOWN, ['trusted' => true]));
+        $this->assertSame('<div class="text_to_html">lala <object>xx</object></div>',
+            format_text($text, FORMAT_MOODLE, ['trusted' => true]));
+        $this->assertSame('lala <object>xx</object>',
+            format_text($text, FORMAT_HTML, ['trusted' => true]));
+
+        $this->assertSame(s($text),
+            format_text($text, FORMAT_PLAIN, ['trusted' => false]));
+        $this->assertSame("<p>lala xx</p>\n",
+            format_text($text, FORMAT_MARKDOWN, ['trusted' => false]));
+        $this->assertSame('<div class="text_to_html">lala xx</div>',
+            format_text($text, FORMAT_MOODLE, ['trusted' => false]));
+        $this->assertSame('lala xx',
+            format_text($text, FORMAT_HTML, ['trusted' => false]));
+
+        $this->assertSame("<p>lala <object>xx</object></p>\n",
+            format_text($text, FORMAT_MARKDOWN, ['trusted' => true, 'noclean' => true]));
+        $this->assertSame("<p>lala <object>xx</object></p>\n",
+            format_text($text, FORMAT_MARKDOWN, ['trusted' => false, 'noclean' => true]));
     }
 
     /**
@@ -521,7 +826,7 @@ EXPECTED;
     /**
      * Data provider for test_content_to_text.
      */
-    public static function provider_content_to_text() {
+    public static function provider_content_to_text(): array {
         return array(
             array('asd', false, 'asd'),
             // Trim '\r\n '.
@@ -547,7 +852,7 @@ EXPECTED;
      *
      * @return array Returns aray of test data for the test_validate_email function
      */
-    public function data_validate_email() {
+    public static function data_validate_email(): array {
         return [
             // Test addresses that should pass.
             [
@@ -715,7 +1020,7 @@ EXPECTED;
     /**
      * Data provider for test_get_file_argument.
      */
-    public static function provider_get_file_argument() {
+    public static function provider_get_file_argument(): array {
         return array(
             // Serving SCORM content w/o HTTP GET params.
             array(array(
@@ -881,9 +1186,9 @@ EXPECTED;
         $url1 = "{$CFG->wwwroot}/draftfile.php/5/user/draft/99999999/test1.jpg";
         $url2 = "{$CFG->wwwroot}/draftfile.php/5/user/draft/99999998/test2.jpg";
 
-        $html = "<p>This is a test.</p><p><img src=\"{$url1}\" alt=\"\" role=\"presentation\"></p>
+        $html = "<p>This is a test.</p><p><img src=\"{$url1}\" alt=\"\"></p>
                 <br>Test content.<p></p><p><img src=\"{$url2}\" alt=\"\" width=\"2048\" height=\"1536\"
-                role=\"presentation\" class=\"img-fluid atto_image_button_text-bottom\"><br></p>";
+                class=\"img-fluid atto_image_button_text-bottom\"><br></p>";
         $draftareas = array(
             array(
                 'urlbase' => 'draftfile.php',
@@ -963,11 +1268,12 @@ EXPECTED;
      *
      * @return string[][]
      */
-    public function get_html_lang_attribute_value_provider() {
+    public static function get_html_lang_attribute_value_provider(): array {
         return [
-            'Empty lang code' => ['    ', 'unknown'],
+            'Empty lang code' => ['    ', 'en'],
             'English' => ['en', 'en'],
-            'English, US' => ['en_us', 'en-us'],
+            'English, US' => ['en_us', 'en'],
+            'Unknown' => ['xx', 'en'],
         ];
     }
 
@@ -1008,7 +1314,7 @@ EXPECTED;
      * @see \moodle_url::out_as_local_url()
      * @see parse_url()
      */
-    public function out_as_local_url_coding_exception_provider() {
+    public static function out_as_local_url_coding_exception_provider(): array {
         return [
             'Google Maps CDN (HTTPS)' => [
                 new \moodle_url('https://maps.googleapis.com/maps/api/js', ['key' => 'googlemapkey3', 'sensor' => 'false']),
@@ -1043,7 +1349,7 @@ EXPECTED;
      * @see \moodle_url::out_as_local_url()
      * @see parse_url()
      */
-    public function out_as_local_url_provider() {
+    public static function out_as_local_url_provider(): array {
         global $CFG;
         $wwwroot = rtrim($CFG->wwwroot, '/');
 
@@ -1082,7 +1388,7 @@ EXPECTED;
      * @return array
      * @see \moodle_url::is_local_url()
      */
-    public function is_local_url_provider() {
+    public static function is_local_url_provider(): array {
         global $CFG;
         $wwwroot = rtrim($CFG->wwwroot, '/');
 
@@ -1119,7 +1425,7 @@ EXPECTED;
      *
      * @return array
      */
-    public function strip_querystring_provider(): array {
+    public static function strip_querystring_provider(): array {
         return [
             'Null' => [null, ''],
             'Empty string' => ['', ''],

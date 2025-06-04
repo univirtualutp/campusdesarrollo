@@ -82,7 +82,15 @@ class get extends external_api {
                         new external_value(PARAM_RAW, 'Filter value'),
                         'The value to filter on',
                         VALUE_REQUIRED
-                    )
+                    ),
+                    'filteroptions' => new external_multiple_structure(
+                        new external_single_structure([
+                            'name' => new external_value(PARAM_ALPHANUM, 'Name of the filter option', VALUE_REQUIRED),
+                            'value' => new external_value(PARAM_RAW, 'Value of the filter option', VALUE_REQUIRED),
+                        ]),
+                        'Additional options for this filter',
+                        VALUE_OPTIONAL,
+                    ),
                 ]),
                 'The filters that will be applied in the request',
                 VALUE_OPTIONAL
@@ -219,6 +227,13 @@ class get extends external_api {
         $instance = new $tableclass($uniqueid);
         $instance->set_filterset($filterset);
         self::validate_context($instance->get_context());
+        if (!method_exists($instance, 'has_capability')) {
+            // Method \core_table\dynamic::has_capability() will be added in Moodle 4.5. Until then if it is not
+            // implemented, we will require the admin capability.
+            require_capability('moodle/site:config', \context_system::instance());
+        } else if (!$instance->has_capability()) {
+            throw new \moodle_exception('nopermissiontoaccesspage');
+        }
 
         $instance->set_sortdata($sortdata);
         $alphabet = get_string('alphabet', 'langconfig');

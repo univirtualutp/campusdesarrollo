@@ -207,7 +207,7 @@ function dialogue_cm_unread_total(\mod_dialogue\dialogue $dialogue) {
 
     // Get user's total unread count for a dialogue.
     $record = (array) $DB->get_record_sql($sql, $params);
-    if (isset($record['unread']) and $record['unread'] > 0) {
+    if (isset($record['unread']) && $record['unread'] > 0) {
         return (int) $record['unread'];
     }
     return 0;
@@ -329,7 +329,7 @@ function dialogue_generate_summary_line($subject, $body, $bodyformat, $length = 
     $body    = html_to_text($body, 0, false);
 
     $diff = $length - (strlen($subject) + strlen($separator));
-    if (\core_text::strlen($subject) > $length or ! $diff) {
+    if (\core_text::strlen($subject) > $length || ! $diff) {
         return html_writer::tag('strong', shorten_text($subject, $length));
     }
 
@@ -447,9 +447,8 @@ function dialogue_get_humanfriendly_dates($epoch) {
         break; // Leave on first, this will be largest unit.
     }
 
-    $customdatetime['datefull'] = $datetime['mday'] . ' ' . $datetime['month'] . ' ' . $datetime['year'];
-    $customdatetime['dateshort'] = $datetime['mday'] . ' ' . $datetime['month'];
-
+    $customdatetime['datefull'] = userdate($epoch, get_string('strftimedate', 'langconfig'));
+    $customdatetime['dateshort'] = userdate($epoch, get_string('strftimedateshort', 'langconfig'));
     $customdatetime['time'] = userdate($epoch, get_string('strftimetime', 'langconfig'));
     $customdatetime['today'] = ($epoch >= strtotime("today")) ? true : false;
     $customdatetime['currentyear'] = ($epoch >= strtotime("-1 year")) ? true : false;
@@ -488,3 +487,27 @@ function dialogue_contains_draft_files($draftid) {
     return (count($draftfiles) > 1) ? true : false;
 }
 
+/**
+ * Get the name for a user -
+ * hiding their full name if the required capability is missing.
+ *
+ * @param stdClass $userviewed the user whose details are being viewed
+ * @param stdClass $userviewedby the user who is viewing these details
+ * @param stdClass $cm  the course module object
+ *
+ * @return string fullname
+ */
+function dialogue_add_user_fullname(stdClass $userviewed,
+    stdClass $userviewedby = null, stdClass $cm = null) {
+    global $PAGE, $USER;
+    if (!$userviewedby) {
+        $userviewedby = $USER;
+    }
+    if (!$cm) {
+        $cm = $PAGE->cm;
+    }
+    $capability = 'moodle/site:viewfullnames';
+    $context = context_module::instance($cm->id);
+    $hasviewfullnames = has_capability($capability, $context, $userviewedby);
+    return fullname($userviewed, $hasviewfullnames);
+}

@@ -18,20 +18,10 @@ declare(strict_types=1);
 
 namespace core_course\reportbuilder\datasource;
 
-use context_course;
-use core_customfield_generator;
-use core_reportbuilder_testcase;
+use core\context\course;
 use core_reportbuilder_generator;
-use core_reportbuilder\local\filters\boolean_select;
-use core_reportbuilder\local\filters\date;
-use core_reportbuilder\local\filters\select;
-use core_reportbuilder\local\filters\tags;
-use core_reportbuilder\local\filters\text;
-
-defined('MOODLE_INTERNAL') || die();
-
-global $CFG;
-require_once("{$CFG->dirroot}/reportbuilder/tests/helpers.php");
+use core_reportbuilder\local\filters\{boolean_select, category, date, select, tags, text};
+use core_reportbuilder\tests\core_reportbuilder_testcase;
 
 /**
  * Unit tests for courses datasources
@@ -41,7 +31,7 @@ require_once("{$CFG->dirroot}/reportbuilder/tests/helpers.php");
  * @copyright   2021 Paul Holden <paulh@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class courses_test extends core_reportbuilder_testcase {
+final class courses_test extends core_reportbuilder_testcase {
 
     /**
      * Test default datasource
@@ -51,7 +41,13 @@ class courses_test extends core_reportbuilder_testcase {
 
         // Test subject.
         $category = $this->getDataGenerator()->create_category(['name' => 'My cats']);
-        $course = $this->getDataGenerator()->create_course([
+        $courseone = $this->getDataGenerator()->create_course([
+            'category' => $category->id,
+            'fullname' => 'Feline fine',
+            'shortname' => 'C102',
+            'idnumber' => 'CAT102'
+        ]);
+        $coursetwo = $this->getDataGenerator()->create_course([
             'category' => $category->id,
             'fullname' => 'All about cats',
             'shortname' => 'C101',
@@ -63,16 +59,12 @@ class courses_test extends core_reportbuilder_testcase {
         $report = $generator->create_report(['name' => 'Courses', 'source' => courses::class, 'default' => 1]);
 
         $content = $this->get_custom_report_content($report->get('id'));
-        $this->assertCount(1, $content);
 
-        $contentrow = array_values($content[0]);
-
+        // Default columns are category, shortname, fullname, idnumber. Sorted by category, shortname, fullname.
         $this->assertEquals([
-            $category->get_formatted_name(),
-            $course->shortname,
-            $course->fullname,
-            $course->idnumber,
-        ], $contentrow);
+            [$category->name, $coursetwo->shortname, $coursetwo->fullname, $coursetwo->idnumber],
+            [$category->name, $courseone->shortname, $courseone->fullname, $courseone->idnumber],
+        ], array_map('array_values', $content));
     }
 
     /**
@@ -95,7 +87,7 @@ class courses_test extends core_reportbuilder_testcase {
 
         // Add a course image.
         get_file_storage()->create_file_from_string([
-            'contextid' => context_course::instance($course->id)->id,
+            'contextid' => course::instance($course->id)->id,
             'component' => 'course',
             'filearea' => 'overviewfiles',
             'itemid' => 0,
@@ -216,10 +208,15 @@ class courses_test extends core_reportbuilder_testcase {
      *
      * @return array[]
      */
-    public function datasource_filters_provider(): array {
+    public static function datasource_filters_provider(): array {
         return [
             // Category.
             'Filter category' => ['course_category:name', [
+                'course_category:name_operator' => category::NOT_EQUAL_TO,
+                'course_category:name_value' => -1,
+            ], true],
+            'Filter category (no match)' => ['course_category:name', [
+                'course_category:name_operator' => category::EQUAL_TO,
                 'course_category:name_value' => -1,
             ], false],
             'Filter category name' => ['course_category:text', [
@@ -399,7 +396,7 @@ class courses_test extends core_reportbuilder_testcase {
         $generator = $this->getDataGenerator()->get_plugin_generator('core_reportbuilder');
 
         // Create report containing single column, and given filter.
-        $report = $generator->create_report(['name' => 'Tasks', 'source' => courses::class, 'default' => 0]);
+        $report = $generator->create_report(['name' => 'Courses', 'source' => courses::class, 'default' => 0]);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'course:fullname']);
 
         // Add filter, set it's values.
@@ -426,13 +423,8 @@ class courses_test extends core_reportbuilder_testcase {
 
         $this->resetAfterTest();
 
-        /** @var core_customfield_generator $generator */
-        $generator = $this->getDataGenerator()->get_plugin_generator('core_customfield');
-        $customfieldcategory = $generator->create_category();
-        $generator->create_field(['categoryid' => $customfieldcategory->get('id'), 'shortname' => 'hi']);
-
         $category = $this->getDataGenerator()->create_category();
-        $course = $this->getDataGenerator()->create_course(['category' => $category->id, 'customfield_hi' => 'Hello']);
+        $course = $this->getDataGenerator()->create_course(['category' => $category->id]);
 
         $this->datasource_stress_test_columns(courses::class);
         $this->datasource_stress_test_columns_aggregation(courses::class);

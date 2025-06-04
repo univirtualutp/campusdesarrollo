@@ -42,7 +42,7 @@ require_once($CFG->libdir.'/moodlelib.php');
  * @copyright 2013 David Mudrak <david@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class string_manager_standard_test extends \advanced_testcase {
+final class string_manager_standard_test extends \advanced_testcase {
 
     public function test_string_manager_instance() {
         $this->resetAfterTest();
@@ -89,7 +89,7 @@ class string_manager_standard_test extends \advanced_testcase {
         $this->assertEquals('Course page', get_string('coursepage', 'core_admin'));
         $this->assertDebuggingCalled('String [coursepage,core_admin] is deprecated. '.
             'Either you should no longer be using that string, or the string has been incorrectly deprecated, in which case you should report this as a bug. '.
-            'Please refer to https://docs.moodle.org/dev/String_deprecation');
+            'Please refer to https://moodledev.io/general/projects/api/string-deprecation');
     }
 
     /**
@@ -97,14 +97,12 @@ class string_manager_standard_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function get_deprecated_strings_provider() {
+    public static function get_deprecated_strings_provider(): array {
         global $CFG;
 
-        $teststringman = testable_core_string_manager::instance($CFG->langotherroot, $CFG->langlocalroot, array());
+        $teststringman = testable_core_string_manager::instance($CFG->langotherroot, $CFG->langlocalroot, []);
         $allstrings = $teststringman->get_all_deprecated_strings();
-        return array_map(function($string) {
-            return [$string];
-        }, $allstrings);
+        return array_map(fn ($string): array => [$string], $allstrings);
     }
 
     /**

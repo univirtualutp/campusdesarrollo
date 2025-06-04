@@ -37,7 +37,7 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since      Moodle 3.0
  */
-class lib_test extends \advanced_testcase {
+final class lib_test extends \advanced_testcase {
 
     /**
      * Prepares things before this test case is initialised
@@ -144,11 +144,13 @@ class lib_test extends \advanced_testcase {
         $info = resource_get_coursemodule_info(
                 $DB->get_record('course_modules', array('id' => $resource2->cmid)));
         $this->assertEquals('R2', $info->name);
+        $this->assertEquals('f/text', $info->icon);
 
         // For third one, it should use the highest sortorder icon.
         $info = resource_get_coursemodule_info(
                 $DB->get_record('course_modules', array('id' => $resource3->cmid)));
         $this->assertEquals('R3', $info->name);
+        $this->assertEquals('f/document', $info->icon);
     }
 
     public function test_resource_core_calendar_provide_event_action() {

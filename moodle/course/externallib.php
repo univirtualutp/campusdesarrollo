@@ -28,6 +28,7 @@ defined('MOODLE_INTERNAL') || die;
 
 use core_course\external\course_summary_exporter;
 use core_external\external_api;
+use core_external\external_description;
 use core_external\external_files;
 use core_external\external_format_value;
 use core_external\external_function_parameters;
@@ -268,11 +269,16 @@ class core_course_external extends external_api {
                         $module['indent'] = $cm->indent;
                         $module['onclick'] = $cm->onclick;
                         $module['afterlink'] = $cm->afterlink;
+                        $activitybadgedata = $cm->get_activitybadge();
+                        if (!empty($activitybadgedata)) {
+                            $module['activitybadge'] = $activitybadgedata;
+                        }
                         $module['customdata'] = json_encode($cm->customdata);
                         $module['completion'] = $cm->completion;
                         $module['downloadcontent'] = $cm->downloadcontent;
                         $module['noviewlink'] = plugin_supports('mod', $cm->modname, FEATURE_NO_VIEW_LINK, false);
                         $module['dates'] = $activitydates;
+                        $module['groupmode'] = $cm->groupmode;
 
                         // Check module completion.
                         $completion = $completioninfo->is_enabled($cm);
@@ -461,6 +467,7 @@ class core_course_external extends external_api {
                                     'onclick' => new external_value(PARAM_RAW, 'Onclick action.', VALUE_OPTIONAL),
                                     'afterlink' => new external_value(PARAM_RAW, 'After link info to be displayed.',
                                         VALUE_OPTIONAL),
+                                    'activitybadge' => self::get_activitybadge_structure(),
                                     'customdata' => new external_value(PARAM_RAW, 'Custom data (JSON encoded).', VALUE_OPTIONAL),
                                     'noviewlink' => new external_value(PARAM_BOOL, 'Whether the module has no view page',
                                         VALUE_OPTIONAL),
@@ -482,6 +489,7 @@ class core_course_external extends external_api {
                                         VALUE_DEFAULT,
                                         []
                                     ),
+                                    'groupmode' => new external_value(PARAM_INT, 'Group mode value', VALUE_OPTIONAL),
                                     'contents' => new external_multiple_structure(
                                           new external_single_structure(
                                               array(
@@ -530,6 +538,60 @@ class core_course_external extends external_api {
                     )
                 )
             )
+        );
+    }
+
+    /**
+     * Returns description of activitybadge data.
+     *
+     * @return external_description
+     */
+    protected static function get_activitybadge_structure(): external_description {
+        return new external_single_structure(
+            [
+                'badgecontent' => new external_value(
+                    PARAM_TEXT,
+                    'The content to be displayed in the activity badge',
+                    VALUE_OPTIONAL
+                ),
+                'badgestyle' => new external_value(
+                    PARAM_TEXT,
+                    'The style for the activity badge',
+                    VALUE_OPTIONAL
+                ),
+                'badgeurl' => new external_value(
+                    PARAM_URL,
+                    'An optional URL to redirect the user when the activity badge is clicked',
+                    VALUE_OPTIONAL
+                ),
+                'badgeelementid' => new external_value(
+                    PARAM_ALPHANUMEXT,
+                    'An optional id in case the module wants to add some code for the activity badge',
+                    VALUE_OPTIONAL
+                ),
+                'badgeextraattributes' => new external_multiple_structure(
+                    new external_single_structure(
+                        [
+                            'name' => new external_value(
+                                PARAM_TEXT,
+                                'The attribute name',
+                                VALUE_OPTIONAL
+                            ),
+                            'value' => new external_value(
+                                PARAM_TEXT,
+                                'The attribute value',
+                                VALUE_OPTIONAL
+                            ),
+                        ],
+                        'Each of the attribute names and values',
+                        VALUE_OPTIONAL
+                    ),
+                    'An optional array of extra HTML attributes to add to the badge element',
+                    VALUE_OPTIONAL
+                ),
+            ],
+            'Activity badge to display near the name',
+            VALUE_OPTIONAL
         );
     }
 
@@ -757,6 +819,26 @@ class core_course_external extends external_api {
     }
 
     /**
+     * Return array of all editable course custom fields indexed by their shortname
+     *
+     * @param \context $context
+     * @param int $courseid
+     * @return \core_customfield\field_controller[]
+     */
+    public static function get_editable_customfields(\context $context, int $courseid = 0): array {
+        $result = [];
+
+        $handler = \core_course\customfield\course_handler::create();
+        $handler->set_parent_context($context);
+
+        foreach ($handler->get_editable_fields($courseid) as $field) {
+            $result[$field->get('shortname')] = $field;
+        }
+
+        return $result;
+    }
+
+    /**
      * Returns description of method parameters
      *
      * @return external_function_parameters
@@ -928,8 +1010,13 @@ class core_course_external extends external_api {
 
             // Custom fields.
             if (!empty($course['customfields'])) {
+                $customfields = self::get_editable_customfields($context);
                 foreach ($course['customfields'] as $field) {
-                    $course['customfield_'.$field['shortname']] = $field['value'];
+                    if (array_key_exists($field['shortname'], $customfields)) {
+                        // Ensure we're populating the element form fields correctly.
+                        $controller = \core_customfield\data_controller::create(0, null, $customfields[$field['shortname']]);
+                        $course[$controller->get_form_element_name()] = $field['value'];
+                    }
                 }
             }
 
@@ -1141,10 +1228,15 @@ class core_course_external extends external_api {
                     }
                 }
 
-                // Prepare list of custom fields.
+                // Custom fields.
                 if (isset($course['customfields'])) {
+                    $customfields = self::get_editable_customfields($context, $course['id']);
                     foreach ($course['customfields'] as $field) {
-                        $course['customfield_' . $field['shortname']] = $field['value'];
+                        if (array_key_exists($field['shortname'], $customfields)) {
+                            // Ensure we're populating the element form fields correctly.
+                            $controller = \core_customfield\data_controller::create(0, null, $customfields[$field['shortname']]);
+                            $course[$controller->get_form_element_name()] = $field['value'];
+                        }
                     }
                 }
 
@@ -2139,6 +2231,19 @@ class core_course_external extends external_api {
             $categorycontext = context_coursecat::instance($cat['id']);
             self::validate_context($categorycontext);
             require_capability('moodle/category:manage', $categorycontext);
+
+            // If the category parent is being changed, check for capability in the new parent category
+            if (isset($cat['parent']) && ($cat['parent'] !== $category->parent)) {
+                if ($cat['parent'] == 0) {
+                    // Creating a top level category requires capability in the system context
+                    $parentcontext = context_system::instance();
+                } else {
+                    // Category context
+                    $parentcontext = context_coursecat::instance($cat['parent']);
+                }
+                self::validate_context($parentcontext);
+                require_capability('moodle/category:manage', $parentcontext);
+            }
 
             // this will throw an exception if descriptionformat is not valid
             util::validate_format($cat['descriptionformat']);

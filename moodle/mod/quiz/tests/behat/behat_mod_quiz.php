@@ -28,9 +28,9 @@
 require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
 require_once(__DIR__ . '/../../../../question/tests/behat/behat_question_base.php');
 
-use Behat\Gherkin\Node\TableNode as TableNode;
-
-use Behat\Mink\Exception\ExpectationException as ExpectationException;
+use Behat\Gherkin\Node\TableNode;
+use Behat\Mink\Exception\DriverException;
+use Behat\Mink\Exception\ExpectationException;
 use mod_quiz\quiz_attempt;
 use mod_quiz\quiz_settings;
 
@@ -145,6 +145,9 @@ class behat_mod_quiz extends behat_question_base {
                 return new moodle_url('/mod/quiz/review.php', ['attempt' => $attempt->id]);
 
             case 'question bank':
+                // The question bank does not handle fields at the edge of the viewport well.
+                // Increase the size to avoid this.
+                $this->execute('behat_general::i_change_window_size_to', ['window', 'large']);
                 return new moodle_url('/question/edit.php', [
                     'cmid' => $this->get_cm_by_quiz_name($identifier)->id,
                 ]);
@@ -276,7 +279,18 @@ class behat_mod_quiz extends behat_question_base {
                 } else {
                     $includingsubcategories = clean_param($questiondata['includingsubcategories'], PARAM_BOOL);
                 }
-                quiz_add_random_questions($quiz, $page, $question->category, 1, $includingsubcategories);
+
+                $filter = [
+                    'category' => [
+                        'jointype' => \qbank_managecategories\category_condition::JOINTYPE_DEFAULT,
+                        'values' => [$question->category],
+                        'filteroptions' => ['includesubcategories' => $includingsubcategories],
+                    ],
+                ];
+                $filtercondition['filter'] = $filter;
+                $settings = quiz_settings::create($quiz->id);
+                $structure = \mod_quiz\structure::create_for_quiz($settings);
+                $structure->add_random_questions($page, 1, $filtercondition);
             } else {
                 // Add the question.
                 quiz_add_quiz_question($question->id, $quiz, $page, $maxmark);
@@ -573,6 +587,8 @@ class behat_mod_quiz extends behat_question_base {
 
     /**
      * Check the add or remove page-break link after a particular question contains the given parameters in its url.
+     *
+     * @When /^the "(Add|Remove)" page break link after question "(?P<question_name>(?:[^"]|\\")*) should contain:$/
      * @When /^the "(Add|Remove)" page break link after question "(?P<question_name>(?:[^"]|\\")*) should contain:"$/
      * @param string $addorremoves 'Add' or 'Remove'.
      * @param string $questionname the name of the question before the icon to click.
@@ -595,7 +611,6 @@ class behat_mod_quiz extends behat_question_base {
     public function i_click_on_shuffle_for_section($heading) {
         $xpath = $this->get_xpath_for_shuffle_checkbox($heading);
         $checkbox = $this->find('xpath', $xpath);
-        $this->ensure_node_is_visible($checkbox);
         $checkbox->click();
     }
 

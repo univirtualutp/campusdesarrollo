@@ -158,6 +158,12 @@ class navigation_node implements renderable {
     public $showinsecondarynavigation = true;
     /** @var bool If set to true the children of this node will be displayed within a submenu when applicable */
     public $showchildreninsubmenu = false;
+    /** @var string tab element ID. */
+    public $tab;
+    /** @var string unique identifier. */
+    public $moremenuid;
+    /** @var bool node that have children. */
+    public $haschildren;
 
     /**
      * Constructs a new navigation_node
@@ -576,11 +582,20 @@ class navigation_node implements renderable {
 
     /**
      * Sets the title for this node and forces Moodle to utilise it.
-     * @param string $title
+     *
+     * Note that this method is named identically to the public "title" property of the class, which unfortunately confuses
+     * our Mustache renderer, because it will see the method and try and call it without any arguments (hence must be nullable)
+     * before trying to access the public property
+     *
+     * @param string|null $title
+     * @return string
      */
-    public function title($title) {
-        $this->title = $title;
-        $this->forcetitle = true;
+    public function title(?string $title = null): string {
+        if ($title !== null) {
+            $this->title = $title;
+            $this->forcetitle = true;
+        }
+        return (string) $this->title;
     }
 
     /**
@@ -1646,8 +1661,7 @@ class global_navigation extends navigation_node {
             $this->search_for_active_node();
         }
 
-        // If the user is not logged in modify the navigation structure as detailed
-        // in {@link http://docs.moodle.org/dev/Navigation_2.0_structure}
+        // If the user is not logged in modify the navigation structure.
         if (!isloggedin()) {
             $activities = clone($this->rootnodes['site']->children);
             $this->rootnodes['site']->remove();
@@ -2279,7 +2293,6 @@ class global_navigation extends navigation_node {
                 if ($this->includesectionnum !== false && $this->includesectionnum == $section->section) {
                     $this->load_section_activities($sectionnode, $section->section, $activities);
                 }
-                $section->sectionnode = $sectionnode;
                 $navigationsections[$sectionid] = $section;
             }
         }
@@ -2942,6 +2955,9 @@ class global_navigation extends navigation_node {
             }
         } else if (count($this->extendforuser) > 0) {
             $coursenode->add(get_string('participants'), null, self::TYPE_CONTAINER, get_string('participants'), 'participants');
+        } else if ($siteparticipantsnode = $this->rootnodes['site']->get('participants', self::TYPE_CUSTOM)) {
+            // The participants node was added for the site, but cannot be viewed inside the course itself, so remove.
+            $siteparticipantsnode->remove();
         }
 
         // Badges.
@@ -2969,6 +2985,18 @@ class global_navigation extends navigation_node {
             if ($this->page->context->contextlevel < CONTEXT_MODULE && strpos($this->page->pagetype, 'grade-') === 0) {
                 $gradenode->make_active();
             }
+        }
+
+        // Add link for configuring communication.
+        if ($navoptions->communication) {
+            $url = new moodle_url('/communication/configure.php', [
+                'contextid' => \core\context\course::instance($course->id)->id,
+                'instanceid' => $course->id,
+                'instancetype' => 'coursecommunication',
+                'component' => 'core_course',
+            ]);
+            $coursenode->add(get_string('communication', 'communication'), $url,
+                navigation_node::TYPE_SETTING, null, 'communication');
         }
 
         return true;
@@ -3639,6 +3667,7 @@ class navbar extends navigation_node {
         } else if ($this->hasitems !== false) {
             return true;
         }
+        $outcome = false;
         if (count($this->children) > 0 || count($this->prependchildren) > 0) {
             // There have been manually added items - there are definitely items.
             $outcome = true;
@@ -4614,6 +4643,33 @@ class settings_navigation extends navigation_node {
             $coursenode->force_open();
         }
 
+        // MoodleNet links.
+        if ($this->page->user_is_editing()) {
+            $this->page->requires->js_call_amd('core/moodlenet/mutations', 'init');
+        }
+        $usercanshare = utilities::can_user_share($coursecontext, $USER->id, 'course');
+        $issuerid = get_config('moodlenet', 'oauthservice');
+        try {
+            $issuer = \core\oauth2\api::get_issuer($issuerid);
+            $isvalidinstance = utilities::is_valid_instance($issuer);
+            if ($usercanshare && $isvalidinstance) {
+                $this->page->requires->js_call_amd('core/moodlenet/send_resource', 'init');
+                $action = new action_link(new moodle_url(''), '', null, [
+                    'data-action' => 'sendtomoodlenet',
+                    'data-type' => 'course',
+                ]);
+                // Share course to MoodleNet link.
+                $coursenode->add(get_string('moodlenet:sharetomoodlenet', 'moodle'),
+                    $action, self::TYPE_SETTING, null, 'exportcoursetomoodlenet')->set_force_into_more_menu(true);
+                // MoodleNet share progress link.
+                $url = new moodle_url('/moodlenet/shareprogress.php');
+                $coursenode->add(get_string('moodlenet:shareprogress'),
+                    $url, self::TYPE_SETTING, null, 'moodlenetshareprogress')->set_force_into_more_menu(true);
+            }
+        } catch (dml_missing_record_exception $e) {
+            debugging("Invalid MoodleNet OAuth 2 service set in site administration: 'moodlenet | oauthservice'. " .
+                "This must be a valid issuer.");
+        }
 
         if ($adminoptions->update) {
             // Add the course settings link
@@ -4881,7 +4937,7 @@ class settings_navigation extends navigation_node {
             $function($this, $modulenode);
         }
 
-        // Send to MoodleNet.
+        // Send activity to MoodleNet.
         $usercanshare = utilities::can_user_share($this->context->get_course_context(), $USER->id);
         $issuerid = get_config('moodlenet', 'oauthservice');
         try {
@@ -4892,7 +4948,6 @@ class settings_navigation extends navigation_node {
                 $action = new action_link(new moodle_url(''), '', null, [
                     'data-action' => 'sendtomoodlenet',
                     'data-type' => 'activity',
-                    'data-sharetype' => 'resource',
                 ]);
                 $modulenode->add(get_string('moodlenet:sharetomoodlenet', 'moodle'),
                     $action, self::TYPE_SETTING, null, 'exportmoodlenet')->set_force_into_more_menu(true);
@@ -5893,10 +5948,9 @@ class navigation_json {
 }
 
 /**
- * The cache class used by global navigation and settings navigation.
+ * The navigation_cache class is used for global and settings navigation data.
  *
- * It is basically an easy access point to session with a bit of smarts to make
- * sure that the information that is cached is valid still.
+ * It provides an easy access to the session cache with TTL of 1800 seconds.
  *
  * Example use:
  * <code php>
@@ -5915,13 +5969,14 @@ class navigation_json {
 class navigation_cache {
     /** @var int represents the time created */
     protected $creation;
-    /** @var array An array of session keys */
-    protected $session;
+    /** @var cache_session The session cache instance */
+    protected $cache;
+    /** @var array The current cache area data */
+    protected $session = [];
+
     /**
-     * The string to use to segregate this particular cache. It can either be
-     * unique to start a fresh cache or if you want to share a cache then make
-     * it the string used in the original cache.
-     * @var string
+     * @var string A unique string to segregate this particular cache.
+     * It can either be unique to start a fresh cache or shared to use an existing cache.
      */
     protected $area;
     /** @var int a time that the information will time out */
@@ -5934,152 +5989,121 @@ class navigation_cache {
     const CACHEUSERID = 1;
     /** @var int cache value */
     const CACHEVALUE = 2;
-    /** @var null|array An array of navigation cache areas to expire on shutdown */
-    public static $volatilecaches;
+    /** @var null|array An array of cache areas to expire on shutdown */
+    public static $volatilecaches = null;
 
     /**
-     * Contructor for the cache. Requires two arguments
+     * Contructor for the cache. Requires a area string be passed in.
      *
-     * @param string $area The string to use to segregate this particular cache
-     *                it can either be unique to start a fresh cache or if you want
-     *                to share a cache then make it the string used in the original
-     *                cache
+     * @param string $area The unique string to segregate this particular cache.
      * @param int $timeout The number of seconds to time the information out after
      */
     public function __construct($area, $timeout=1800) {
+        global $USER;
         $this->creation = time();
-        $this->area = $area;
+        $this->area = "user_{$USER->id}_{$area}";
         $this->timeout = time() - $timeout;
-        if (rand(0,100) === 0) {
-            $this->garbage_collection();
-        }
+        $this->cache = cache::make('core', 'navigation_cache');
     }
 
     /**
-     * Used to set up the cache within the SESSION.
+     * Ensure the navigation cache is initialised
      *
-     * This is called for each access and ensure that we don't put anything into the session before
-     * it is required.
+     * This is called for each access and ensures that no data is put into the cache before it is required.
      */
-    protected function ensure_session_cache_initialised() {
-        global $SESSION;
+    protected function ensure_navigation_cache_initialised() {
         if (empty($this->session)) {
-            if (!isset($SESSION->navcache)) {
-                $SESSION->navcache = new stdClass;
+            $this->session = $this->cache->get($this->area);
+            if (!is_array($this->session)) {
+                $this->session = [];
             }
-            if (!isset($SESSION->navcache->{$this->area})) {
-                $SESSION->navcache->{$this->area} = array();
-            }
-            $this->session = &$SESSION->navcache->{$this->area}; // pointer to array, =& is correct here
         }
     }
 
     /**
-     * Magic Method to retrieve something by simply calling using = cache->key
+     * Magic Method to retrieve a cached item by simply calling using = cache->key
      *
-     * @param mixed $key The identifier for the information you want out again
-     * @return void|mixed Either void or what ever was put in
+     * @param mixed $key The identifier for the cached information
+     * @return mixed|void The cached information or void if not found
      */
     public function __get($key) {
         if (!$this->cached($key)) {
             return;
         }
-        $information = $this->session[$key][self::CACHEVALUE];
-        return unserialize($information);
+        return unserialize($this->session[$key][self::CACHEVALUE]);
     }
 
     /**
-     * Magic method that simply uses {@link set();} to store something in the cache
+     * Magic method that simply uses {@see navigation_cache::set()} to store an item in the cache
      *
-     * @param string|int $key
-     * @param mixed $information
+     * @param string|int $key The key to store the information against
+     * @param mixed $information The information to cache
      */
     public function __set($key, $information) {
         $this->set($key, $information);
     }
 
     /**
-     * Sets some information against the cache (session) for later retrieval
+     * Sets some information in the session cache for later retrieval
      *
      * @param string|int $key
      * @param mixed $information
      */
     public function set($key, $information) {
         global $USER;
-        $this->ensure_session_cache_initialised();
+        $this->ensure_navigation_cache_initialised();
         $information = serialize($information);
-        $this->session[$key]= array(self::CACHETIME=>time(), self::CACHEUSERID=>$USER->id, self::CACHEVALUE=>$information);
+        $this->session[$key] = [self::CACHETIME => time(), self::CACHEUSERID => $USER->id, self::CACHEVALUE => $information];
+        $this->cache->set($this->area, $this->session);
     }
     /**
      * Check the existence of the identifier in the cache
      *
-     * @param string|int $key
-     * @return bool
+     * @param string|int $key The identifier to check
+     * @return bool True if the item exists in the cache, false otherwise
      */
     public function cached($key) {
-        global $USER;
-        $this->ensure_session_cache_initialised();
-        if (!array_key_exists($key, $this->session) || !is_array($this->session[$key]) || $this->session[$key][self::CACHEUSERID]!=$USER->id || $this->session[$key][self::CACHETIME] < $this->timeout) {
-            return false;
-        }
-        return true;
+        $this->ensure_navigation_cache_initialised();
+        return isset($this->session[$key]) &&
+            is_array($this->session[$key]);
     }
     /**
      * Compare something to it's equivilant in the cache
      *
-     * @param string $key
-     * @param mixed $value
+     * @param string $key  The key to check
+     * @param mixed $value The value to compare
      * @param bool $serialise Whether to serialise the value before comparison
      *              this should only be set to false if the value is already
      *              serialised
-     * @return bool If the value is the same false if it is not set or doesn't match
+     * @return bool True if the value is the same as the cached one, false otherwise
      */
     public function compare($key, $value, $serialise = true) {
         if ($this->cached($key)) {
             if ($serialise) {
                 $value = serialize($value);
             }
-            if ($this->session[$key][self::CACHEVALUE] === $value) {
-                return true;
-            }
+            return $this->session[$key][self::CACHEVALUE] === $value;
         }
         return false;
     }
     /**
-     * Wipes the entire cache, good to force regeneration
+     * Deletes the entire cache area, forcing a fresh cache to be created
      */
     public function clear() {
-        global $SESSION;
-        unset($SESSION->navcache);
-        $this->session = null;
+        $this->cache->delete($this->area);
+        $this->session = [];
     }
     /**
-     * Checks all cache entries and removes any that have expired, good ole cleanup
-     */
-    protected function garbage_collection() {
-        if (empty($this->session)) {
-            return true;
-        }
-        foreach ($this->session as $key=>$cachedinfo) {
-            if (is_array($cachedinfo) && $cachedinfo[self::CACHETIME]<$this->timeout) {
-                unset($this->session[$key]);
-            }
-        }
-    }
-
-    /**
-     * Marks the cache as being volatile (likely to change)
+     * Marks the cache as volatile (likely to change)
      *
-     * Any caches marked as volatile will be destroyed at the on shutdown by
-     * {@link navigation_node::destroy_volatile_caches()} which is registered
-     * as a shutdown function if any caches are marked as volatile.
+     * Any caches marked as volatile will be destroyed on shutdown by {@see navigation_node::destroy_volatile_caches()}
      *
-     * @param bool $setting True to destroy the cache false not too
+     * @param bool $setting True to mark the cache as volatile, false to remove the volatile flag
      */
     public function volatile($setting = true) {
-        if (self::$volatilecaches===null) {
-            self::$volatilecaches = array();
-            core_shutdown_manager::register_function(array('navigation_cache','destroy_volatile_caches'));
+        if (self::$volatilecaches === null) {
+            self::$volatilecaches = [];
+            core_shutdown_manager::register_function(['navigation_cache', 'destroy_volatile_caches']);
         }
 
         if ($setting) {
@@ -6092,19 +6116,16 @@ class navigation_cache {
     /**
      * Destroys all caches marked as volatile
      *
-     * This function is static and works in conjunction with the static volatilecaches
-     * property of navigation cache.
-     * Because this function is static it manually resets the cached areas back to an
-     * empty array.
+     * This function is static and works with the static volatilecaches property of navigation cache.
+     * It manually resets the cached areas back to an empty array.
      */
     public static function destroy_volatile_caches() {
-        global $SESSION;
-        if (is_array(self::$volatilecaches) && count(self::$volatilecaches)>0) {
+        if (is_array(self::$volatilecaches) && count(self::$volatilecaches) > 0) {
+            $cache = cache::make('core', 'navigation_cache');
             foreach (self::$volatilecaches as $area) {
-                $SESSION->navcache->{$area} = array();
+                $cache->delete($area);
             }
-        } else {
-            $SESSION->navcache = new stdClass;
+            self::$volatilecaches = null;
         }
     }
 }

@@ -383,7 +383,7 @@ abstract class base {
      * This method ensures that 3rd party course format plugins that still use 'numsections' continue to
      * work but at the same time we no longer expect formats to have 'numsections' property.
      *
-     * @return int
+     * @return int The last section number, or -1 if sections are entirely missing
      */
     public function get_last_section_number() {
         $course = $this->get_course();
@@ -392,6 +392,12 @@ abstract class base {
         }
         $modinfo = get_fast_modinfo($course);
         $sections = $modinfo->get_section_info_all();
+
+        // Sections seem to be missing entirely. Avoid subsequent errors and return early.
+        if (count($sections) === 0) {
+            return -1;
+        }
+
         return (int)max(array_keys($sections));
     }
 
@@ -623,8 +629,9 @@ abstract class base {
         global $USER;
         $course = $this->get_course();
         try {
-            $sectionpreferences = (array) json_decode(
-                get_user_preferences("coursesectionspreferences_{$course->id}", '', $USER->id)
+            $sectionpreferences = json_decode(
+                get_user_preferences("coursesectionspreferences_{$course->id}", '', $USER->id),
+                true,
             );
             if (empty($sectionpreferences)) {
                 $sectionpreferences = [];
@@ -643,10 +650,65 @@ abstract class base {
      *
      */
     public function set_sections_preference(string $preferencename, array $sectionids) {
-        global $USER;
-        $course = $this->get_course();
         $sectionpreferences = $this->get_sections_preferences_by_preference();
         $sectionpreferences[$preferencename] = $sectionids;
+        $this->persist_to_user_preference($sectionpreferences);
+    }
+
+    /**
+     * Add section preference ids.
+     *
+     * @param string $preferencename preference name
+     * @param array $sectionids affected section ids
+     */
+    public function add_section_preference_ids(
+        string $preferencename,
+        array $sectionids,
+    ): void {
+        $sectionpreferences = $this->get_sections_preferences_by_preference();
+        if (!isset($sectionpreferences[$preferencename])) {
+            $sectionpreferences[$preferencename] = [];
+        }
+        foreach ($sectionids as $sectionid) {
+            if (!in_array($sectionid, $sectionpreferences[$preferencename])) {
+                $sectionpreferences[$preferencename][] = $sectionid;
+            }
+        }
+        $this->persist_to_user_preference($sectionpreferences);
+    }
+
+    /**
+     * Remove section preference ids.
+     *
+     * @param string $preferencename preference name
+     * @param array $sectionids affected section ids
+     */
+    public function remove_section_preference_ids(
+        string $preferencename,
+        array $sectionids,
+    ): void {
+        $sectionpreferences = $this->get_sections_preferences_by_preference();
+        if (!isset($sectionpreferences[$preferencename])) {
+            $sectionpreferences[$preferencename] = [];
+        }
+        foreach ($sectionids as $sectionid) {
+            if (($key = array_search($sectionid, $sectionpreferences[$preferencename])) !== false) {
+                unset($sectionpreferences[$preferencename][$key]);
+            }
+        }
+        $this->persist_to_user_preference($sectionpreferences);
+    }
+
+    /**
+     * Persist the section preferences to the user preferences.
+     *
+     * @param array $sectionpreferences the section preferences
+     */
+    private function persist_to_user_preference(
+        array $sectionpreferences,
+    ): void {
+        global $USER;
+        $course = $this->get_course();
         set_user_preference('coursesectionspreferences_' . $course->id, json_encode($sectionpreferences), $USER->id);
         // Invalidate section preferences cache.
         $coursesectionscache = cache::make('core', 'coursesectionspreferences');
@@ -738,6 +800,37 @@ abstract class base {
             $url->set_anchor('section-'.$sectionno);
         }
         return $url;
+    }
+
+    /**
+     * Return the old non-ajax activity action url.
+     *
+     * BrowserKit behats tests cannot trigger javascript events,
+     * so we must translate to an old non-ajax url while non-ajax
+     * course editing is still supported.
+     *
+     * @param string $action action name the reactive action
+     * @param cm_info $cm course module
+     * @return moodle_url
+     */
+    public function get_non_ajax_cm_action_url(string $action, cm_info $cm): moodle_url {
+        $nonajaxactions = [
+            'cmDelete' => 'delete',
+            'cmDuplicate' => 'duplicate',
+            'cmHide' => 'hide',
+            'cmShow' => 'show',
+            'cmStealth' => 'stealth',
+        ];
+        if (!isset($nonajaxactions[$action])) {
+            throw new coding_exception('Unknown activity action: ' . $action);
+        }
+        $nonajaxaction = $nonajaxactions[$action];
+        $nonajaxurl = new moodle_url(
+            '/course/mod.php',
+            ['sesskey' => sesskey(), $nonajaxaction => $cm->id]
+        );
+        $nonajaxurl->param('sr', $this->get_section_number());
+        return $nonajaxurl;
     }
 
     /**
@@ -835,16 +928,15 @@ abstract class base {
      * core_courseformat will be user as the component.
      *
      * @param string $key the string key
-     * @param string|object|array $data extra data that can be used within translation strings
-     * @param string|null $lang moodle translation language, null means use current
+     * @param string|object|array|int $data extra data that can be used within translation strings
      * @return string the get_string result
      */
-    public function get_format_string(string $key, $data = null, $lang = null): string {
+    public function get_format_string(string $key, $data = null): string {
         $component = 'format_' . $this->get_format();
         if (!get_string_manager()->string_exists($key, $component)) {
             $component = 'core_courseformat';
         }
-        return get_string($key, $component, $data, $lang);
+        return get_string($key, $component, $data);
     }
 
     /**
@@ -1432,6 +1524,21 @@ abstract class base {
     }
 
     /**
+     * Check if the group mode can be displayed.
+     * @param cm_info $cm the activity module
+     * @return bool
+     */
+    public function show_groupmode(cm_info $cm): bool {
+        if (!plugin_supports('mod', $cm->modname, FEATURE_GROUPS, false)) {
+            return false;
+        }
+        if (!has_capability('moodle/course:manageactivities', $cm->context)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Allows to specify for modinfo that section is not available even when it is visible and conditionally available.
      *
      * Note: affected user can be retrieved as: $section->modinfo->userid
@@ -1841,24 +1948,53 @@ abstract class base {
         }
 
         $course = $this->get_course();
-        $oldsectioninfo = get_fast_modinfo($course)->get_section_info($originalsection->section);
-        $newsection = course_create_section($course, $oldsectioninfo->section + 1); // Place new section after existing one.
+        $context = context_course::instance($course->id);
+        $newsection = course_create_section($course, $originalsection->section + 1); // Place new section after existing one.
 
+        $newsectiondata = new stdClass();
         if (!empty($originalsection->name)) {
-            $newsection->name = get_string('duplicatedsection', 'moodle', $originalsection->name);
+            $newsectiondata->name = get_string('duplicatedsection', 'moodle', $originalsection->name);
         } else {
-            $newsection->name = $originalsection->name;
+            $newsectiondata->name = $originalsection->name;
         }
-        $newsection->summary = $originalsection->summary;
-        $newsection->summaryformat = $originalsection->summaryformat;
-        $newsection->visible = $originalsection->visible;
-        $newsection->availability = $originalsection->availability;
-        course_update_section($course, $newsection, $newsection);
+        $newsectiondata->summary = $originalsection->summary;
+        $newsectiondata->summaryformat = $originalsection->summaryformat;
+        $newsectiondata->visible = $originalsection->visible;
+        $newsectiondata->availability = $originalsection->availability;
+        foreach ($this->section_format_options() as $key => $value) {
+            $newsectiondata->$key = $originalsection->$key;
+        }
+        course_update_section($course, $newsection, $newsectiondata);
+
+        try {
+            $fs = get_file_storage();
+            $files = $fs->get_area_files($context->id, 'course', 'section', $originalsection->id);
+
+            foreach ($files as $f) {
+
+                $fileinfo = [
+                    'contextid' => $context->id,
+                    'component' => 'course',
+                    'filearea' => 'section',
+                    'itemid' => $newsection->id,
+                ];
+
+                $fs->create_file_from_storedfile($fileinfo, $f);
+            }
+        } catch (\Exception $e) {
+            debugging('Error copying section files.' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
 
         $modinfo = $this->get_modinfo();
-        foreach ($modinfo->sections[$originalsection->section] as $modnumber) {
-            $originalcm = $modinfo->cms[$modnumber];
-            duplicate_module($course, $originalcm, $newsection->id, false);
+
+        // Duplicate the section modules, should they exist.
+        if (array_key_exists($originalsection->section, $modinfo->sections)) {
+            foreach ($modinfo->sections[$originalsection->section] as $modnumber) {
+                $originalcm = $modinfo->cms[$modnumber];
+                if (!$originalcm->deletioninprogress) {
+                    duplicate_module($course, $originalcm, $newsection->id, false);
+                }
+            }
         }
 
         return get_fast_modinfo($course)->get_section_info_by_id($newsection->id);

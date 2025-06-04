@@ -132,15 +132,6 @@ $tasks = array(
         'month' => '*'
     ),
     array(
-        'classname' => 'core\task\legacy_plugin_cron_task',
-        'blocking' => 0,
-        'minute' => '*',
-        'hour' => '*',
-        'day' => '*',
-        'dayofweek' => '*',
-        'month' => '*'
-    ),
-    array(
         'classname' => 'core\task\grade_cron_task',
         'blocking' => 0,
         'minute' => '*',
@@ -220,16 +211,6 @@ $tasks = array(
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'
-    ),
-    array(
-        'classname' => 'core\task\question_stats_cleanup_task',
-        'blocking' => 0,
-        'minute' => '*',
-        'hour' => '*',
-        'day' => '*',
-        'dayofweek' => '*',
-        'month' => '*',
-        'disabled' => true,
     ),
     array(
         'classname' => 'core\task\registration_cron_task',
@@ -446,5 +427,34 @@ $tasks = array(
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'
+    ],
+    [
+        'classname' => 'core\task\show_started_courses_task',
+        'blocking' => 0,
+        'minute' => '00',
+        'hour' => '01',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*',
+        'disabled' => true,
+    ],
+    [
+        'classname' => 'core\task\hide_ended_courses_task',
+        'blocking' => 0,
+        'minute' => '00',
+        'hour' => '01',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*',
+        'disabled' => true,
+    ],
+    [
+        'classname' => 'core\task\automated_backup_report_task',
+        'blocking' => 0,
+        'minute' => '*',
+        'hour' => '*',
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*',
     ],
 );

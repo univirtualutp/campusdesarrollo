@@ -26,7 +26,7 @@ use tool_generator_course_backend;
  * @copyright 2013 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class maketestcourse_test extends \advanced_testcase {
+final class maketestcourse_test extends \advanced_testcase {
     /**
      * Creates a small test course and checks all the components have been put in place.
      */
@@ -68,9 +68,14 @@ class maketestcourse_test extends \advanced_testcase {
         $this->assertEquals(2, count($modinfo->get_section_info_all()));
 
         // Check user is enrolled.
+        // enroladminnewcourse is enabled by default, so admin is also enrolled as teacher.
         $users = get_enrolled_users($context);
-        $this->assertEquals(1, count($users));
-        $this->assertEquals('tool_generator_000001', reset($users)->username);
+        $this->assertEquals(2, count($users));
+        $usernames = array_map(function($user) {
+            return $user->username;
+        }, $users);
+        $this->assertTrue(in_array('admin', $usernames));
+        $this->assertTrue(in_array('tool_generator_000001', $usernames));
 
         // Check there's a page on the course.
         $pages = $modinfo->get_instances_of('page');
